@@ -55,6 +55,16 @@ public sealed class IndexParts
         lock (_lock) { _linked[key] = entries; _crawl[key] = info; }
     }
 
+    /// <summary>True if this link already has crawled content (from an earlier crawl).</summary>
+    public bool HasLinked(string key) { lock (_lock) return _linked.TryGetValue(key, out var l) && l.Count > 0; }
+
+    /// <summary>Shows what a crawl of one link has found so far, without recording an outcome (the link still counts as not crawled,
+    /// so a crawl that is cut short is simply done again). The final <see cref="SetLinked"/> replaces it.</summary>
+    public void SetLinkedPartial(string key, List<IndexEntry> entriesSoFar)
+    {
+        lock (_lock) _linked[key] = entriesSoFar;
+    }
+
     /// <summary>Remembers an outcome without results (e.g. the link target was unavailable).</summary>
     public void SetCrawlInfo(CrawlInfo info) { lock (_lock) _crawl[info.Key] = info; }
 

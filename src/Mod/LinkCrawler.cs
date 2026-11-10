@@ -28,6 +28,28 @@ internal static class LinkCrawler
     private static volatile bool _wake;
     private static DateTime _nextCheckUtc = DateTime.MinValue;
 
+    public enum LinkState { Idle, Queued, Crawling }
+
+    private static readonly object _stateLock = new();
+    private static HashSet<string> _queued = new(StringComparer.OrdinalIgnoreCase);
+    private static string? _currentKey;
+    private static int _currentFolders;
+
+    /// <summary>Links done / planned in the running pass (0/0 when idle).</summary>
+    public static (int Done, int Total) Counts { get; private set; }
+
+    /// <summary>What the crawler is doing with one link right now (the Links panel shows it so nobody re-crawls twice).</summary>
+    public static LinkState StateOf(string key, out int folders)
+    {
+        lock (_stateLock)
+        {
+            folders = 0;
+            if (!Active) return LinkState.Idle;
+            if (string.Equals(_currentKey, key, StringComparison.OrdinalIgnoreCase)) { folders = _currentFolders; return LinkState.Crawling; }
+            return _queued.Contains(key) ? LinkState.Queued : LinkState.Idle;
+        }
+    }
+
     /// <summary>Shown in the status line while a pass is running ("" otherwise).</summary>
     public static string Progress { get; private set; } = "";
     public static bool Active => Volatile.Read(ref _running) == 1;
@@ -39,12 +61,16 @@ internal static class LinkCrawler
     /// running, ends it so a fresh pass starts within a couple of seconds. Items already found stay searchable meanwhile.
     /// Also retries links that were marked unavailable. Returns how many links were reset.
     /// </summary>
-    public static int Recrawl(string? key = null)
+    public static int Recrawl(string? key = null, bool restart = true)
     {
+        // a link already queued or being crawled in the running pass needs nothing: it is crawled anyway
+        if (key != null && Active && StateOf(key, out _) != LinkState.Idle) return 0;
         int n = IndexService.Parts.ForgetCrawl(key);
         _nextCheckUtc = DateTime.MinValue;
         _wake = true;
-        if (Active) Cancel();            // the running pass stops at its next step; Kick starts the new one
+        // restart = end the running pass so a fresh one starts (needed when the limits changed); otherwise the forgotten links
+        // are picked up by the next pass, which starts as soon as the running one ends
+        if (Active && restart) Cancel();
         IndexService.Note(key == null ? $"link crawl: forced a re-crawl of all links ({n} reset)" : $"link crawl: forced a re-crawl of {key}");
         return n;
     }
@@ -116,6 +142,8 @@ internal static class LinkCrawler
 
             LocalDbProbe.Start(3, "link crawl");
             IndexService.Note($"link crawl: {plan.Count} of {seeds.Count} links to crawl, one request at a time, at most {limits.RequestsPerSecond:0.#}/s (runs in the background; switch Linked off to stop)");
+            lock (_stateLock) { _queued = new HashSet<string>(plan.Select(p => p.Key), StringComparer.OrdinalIgnoreCase); _currentKey = null; _currentFolders = 0; }
+            Counts = (0, plan.Count);
             var gate = new MinIntervalGate(limits.RequestsPerSecond);
             var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             int folders = 0, entries = 0, done = 0, unavailable = 0, truncated = 0, transientInRow = 0;
@@ -131,6 +159,7 @@ internal static class LinkCrawler
                     break;
                 }
                 Progress = $"crawling links {done + 1}/{plan.Count}: {seed.Name}";
+                lock (_stateLock) { _queued.Remove(seed.Key); _currentKey = seed.Key; _currentFolders = 0; }
 
                 var r = await CrawlSeedAsync(engine, seed, limits, gate, visited, limits.MaxFoldersTotal - folders, ct).ConfigureAwait(false);
                 if (r.Transient)
@@ -146,6 +175,7 @@ internal static class LinkCrawler
                 if (r.Unavailable) { parts.SetCrawlInfo(info); unavailable++; }
                 else parts.SetLinked(seed.Key, r.Entries, info);
                 folders += r.Folders; entries += r.Entries.Count; done++; if (r.Truncated) truncated++;
+                Counts = (done, plan.Count);
 
                 IndexService.RequestRepublish();                       // results appear link by link
                 if (lastSave.Elapsed > TimeSpan.FromSeconds(60)) { IndexService.RequestSave(2); lastSave.Restart(); }
@@ -159,6 +189,8 @@ internal static class LinkCrawler
         finally
         {
             Progress = "";
+            lock (_stateLock) { _queued = new HashSet<string>(StringComparer.OrdinalIgnoreCase); _currentKey = null; }
+            Counts = (0, 0);
             Interlocked.Exchange(ref _running, 0);
             IndexService.RequestRepublish();                            // refresh the status line
         }
@@ -172,6 +204,10 @@ internal static class LinkCrawler
         var entries = new List<IndexEntry>();
         int folders = 0, cap = Math.Max(1, Math.Min(limits.MaxFoldersPerSeed, totalFoldersLeft));
         bool truncated = false;
+        // A link with nothing crawled yet shows what it has found so far (every few seconds) instead of appearing all at once when
+        // it is finished. A re-crawl of a link that already has content keeps showing the old content until the new one is complete.
+        bool showPartial = !IndexService.Parts.HasLinked(seed.Key);
+        var lastPartial = Stopwatch.StartNew();
 
         // work items: either a link URI still to resolve, or a folder to list; depth = link hops so far
         var queue = new Queue<(string? LinkUri, string? Owner, string? Path, int Depth)>();
@@ -228,7 +264,14 @@ internal static class LinkCrawler
                 else if (r.RecordType == "link" && item.Depth < limits.MaxDepth && !string.IsNullOrEmpty(r.AssetURI))
                     queue.Enqueue((r.AssetURI, null, null, item.Depth + 1));
             }
+            lock (_stateLock) _currentFolders = folders;
             if (folders % 25 == 0) Progress = $"crawling links: {seed.Name} ({folders} folders)";
+            if (showPartial && lastPartial.Elapsed > TimeSpan.FromSeconds(3) && entries.Count > 0)
+            {
+                IndexService.Parts.SetLinkedPartial(seed.Key, entries.ToList());
+                IndexService.RequestRepublish();
+                lastPartial.Restart();
+            }
         }
         return new SeedResult(entries, folders, truncated, false, false);
     }

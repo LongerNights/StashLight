@@ -21,14 +21,15 @@ internal sealed class LinksPanel
         public LinkSeed Seed = null!;
         public Slot Root = null!;
         public UText Name = null!, Info = null!;
-        public Button Toggle = null!;
+        public Button Toggle = null!, Recrawl = null!;
     }
 
     private readonly RectTransform _host;
     private Slot _scrim = null!, _panel = null!;
     private RectTransform _panelRect = null!, _content = null!;
     private UText _summary = null!, _depthLabel = null!;
-    private int _depthVersion;
+    private Button _recrawlAll = null!;
+    private int _depthVersion, _tickVersion;
     private readonly List<Row> _rows = new();
     private List<LinkSeed> _seeds = new();
     private int _buildVersion;
@@ -60,7 +61,7 @@ internal sealed class LinksPanel
         _summary = UiKit.Label(UiKit.Rect(_panelRect, "Summary", new float2(0.03f, 0.83f), new float2(0.97f, 0.90f)), "", TypeScale.Body,
                                Alignment.MiddleLeft, UiKit.Muted, fit: true, minSize: 12f);
 
-        UiKit.TextButton(UiKit.Rect(_panelRect, "RecrawlAll", new float2(0.58f, 0.905f), new float2(0.80f, 0.975f)), "Re-crawl all", (b, e) => RecrawlAll(), TypeScale.Body);
+        _recrawlAll = UiKit.TextButton(UiKit.Rect(_panelRect, "RecrawlAll", new float2(0.56f, 0.905f), new float2(0.80f, 0.975f)), "Re-crawl all", (b, e) => RecrawlAll(), TypeScale.Body);
         UiKit.TextButton(UiKit.Rect(_panelRect, "Close", new float2(0.82f, 0.905f), new float2(0.97f, 0.975f)), "Close", (b, e) => Close(), TypeScale.Body);
 
         var list = UiKit.Rect(_panelRect, "List", new float2(0.02f, 0.03f), new float2(0.98f, 0.82f));
@@ -85,6 +86,23 @@ internal sealed class LinksPanel
         _panel.ActiveSelf = true;
         Rebuild();
         UiMotion.SlideIn(_panelRect, new float2(0f, -0.03f), 0.25f);
+        StartTicker();
+    }
+
+    /// <summary>While the panel is open, redraws the crawl state (queued / crawling / counts) once a second.</summary>
+    private void StartTicker()
+    {
+        int version = _tickVersion;
+        var world = _host.World;
+        _ = Task.Run(async () =>
+        {
+            while (true)
+            {
+                await Task.Delay(1000).ConfigureAwait(false);
+                if (version != Volatile.Read(ref _tickVersion)) return;
+                world.RunSynchronously(() => { if (version == _tickVersion && IsOpen && !_host.Slot.IsRemoved) Refresh(); });
+            }
+        });
     }
 
     public void Close()
@@ -92,6 +110,7 @@ internal sealed class LinksPanel
         _panel.ActiveSelf = false;
         _scrim.ActiveSelf = false;
         _buildVersion++;                       // stop any rows still being built
+        Interlocked.Increment(ref _tickVersion);
     }
 
     // ---------------------------------------------------------------- rows
@@ -110,10 +129,11 @@ internal sealed class LinksPanel
         foreach (var r in _rows) r.Root.Destroy();
         _rows.Clear();
 
-        _seeds = CrawlPlanner.SeedsFrom(IndexService.Index.Entries)
+        _seeds = CrawlPlanner.Distinct(CrawlPlanner.SeedsFrom(IndexService.Index.Entries))
                              .OrderBy(s => s.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
         SetContentHeight(_seeds.Count * RowH);
         RefreshSummary();
+        PaintRecrawlAll();
 
         // a dozen rows per frame
         _host.Slot.StartTask(async () =>
@@ -141,7 +161,7 @@ internal sealed class LinksPanel
         row.Info = UiKit.Label(UiKit.Rect(rt, "Info", new float2(0.43f, 0.08f), new float2(0.70f, 0.92f)), "", TypeScale.Body,
                                Alignment.MiddleLeft, UiKit.Muted, fit: true, minSize: 11f);
         row.Toggle = UiKit.TextButton(UiKit.Rect(rt, "Toggle", new float2(0.71f, 0.14f), new float2(0.84f, 0.86f)), "On", (b, e) => ToggleRow(row), TypeScale.Body);
-        UiKit.TextButton(UiKit.Rect(rt, "Recrawl", new float2(0.86f, 0.14f), new float2(0.985f, 0.86f)), "Re-crawl", (b, e) => RecrawlRow(row), TypeScale.Body);
+        row.Recrawl = UiKit.TextButton(UiKit.Rect(rt, "Recrawl", new float2(0.86f, 0.14f), new float2(0.985f, 0.86f)), "Re-crawl", (b, e) => RecrawlRow(row), TypeScale.Body);
 
         _rows.Add(row);
         Paint(row, CrawlPlanner.ParseDisabled(Setting), IndexService.Parts.CrawlState());
@@ -153,7 +173,15 @@ internal sealed class LinksPanel
     {
         bool off = CrawlPlanner.IsDisabled(row.Seed, disabled);
         state.TryGetValue(row.Seed.Key, out var info);
-        row.Info.Content.Value = LinkRows.Describe(info, off, DateTime.UtcNow);
+        string text = LinkRows.Describe(info, off, DateTime.UtcNow);
+        var st = off ? LinkCrawler.LinkState.Idle : LinkCrawler.StateOf(row.Seed.Key, out _);
+        int folders = 0;
+        if (st == LinkCrawler.LinkState.Crawling) LinkCrawler.StateOf(row.Seed.Key, out folders);
+        row.Info.Content.Value = st == LinkCrawler.LinkState.Crawling ? (folders > 0 ? $"crawling now… {folders} folders" : "crawling now…")
+                               : st == LinkCrawler.LinkState.Queued ? "queued · " + text : text;
+        // the button says what is going on, so it is not pressed again and again
+        UiKit.SetLabel(row.Recrawl, st == LinkCrawler.LinkState.Crawling ? "Crawling…" : st == LinkCrawler.LinkState.Queued ? "Queued" : "Re-crawl");
+        UiKit.SetButtonColor(row.Recrawl, st == LinkCrawler.LinkState.Idle ? Theme.Button : UiKit.WithAlpha(Theme.Button, 0.5f));
         row.Name.Color.Value = off ? UiKit.Muted : UiKit.Text;
         UiKit.SetLabel(row.Toggle, off ? "Off" : "On");
         UiKit.SetButtonColor(row.Toggle, off ? Theme.Button : Theme.ButtonSelected);       // accent = on, like the Linked button
@@ -164,6 +192,7 @@ internal sealed class LinksPanel
     {
         if (!IsOpen) return;
         RefreshSummary();
+        PaintRecrawlAll();
         var off = CrawlPlanner.ParseDisabled(Setting);
         var state = IndexService.Parts.CrawlState();
         foreach (var r in _rows) Paint(r, off, state);
@@ -195,6 +224,14 @@ internal sealed class LinksPanel
         });
     }
 
+    private void PaintRecrawlAll()
+    {
+        var (done, total) = LinkCrawler.Counts;
+        bool busy = LinkCrawler.Active;
+        UiKit.SetLabel(_recrawlAll, busy ? (total > 0 ? $"Crawling {done}/{total}…" : "Crawling…") : "Re-crawl all");
+        UiKit.SetButtonColor(_recrawlAll, busy ? UiKit.WithAlpha(Theme.Button, 0.5f) : Theme.Button);
+    }
+
     private void RefreshSummary()
     {
         _depthLabel.Content.Value = $"Depth: {Depth}";
@@ -219,14 +256,16 @@ internal sealed class LinksPanel
     {
         if (!StashLightMod.IncludeLinked) { ItemActions.Toast("Turn Linked on first: links are only crawled while it is on", true); return; }
         if (CrawlPlanner.IsDisabled(row.Seed, CrawlPlanner.ParseDisabled(Setting))) { ItemActions.Toast("This link is switched off; switch it on first", true); return; }
-        LinkCrawler.Recrawl(row.Seed.Key);
-        ItemActions.Toast("Re-crawling " + row.Seed.Name);
+        if (LinkCrawler.StateOf(row.Seed.Key, out _) != LinkCrawler.LinkState.Idle) { ItemActions.Toast(row.Seed.Name + " is already queued or being crawled"); return; }
+        LinkCrawler.Recrawl(row.Seed.Key, restart: false);          // joins the next pass; the running one is not interrupted
+        ItemActions.Toast(LinkCrawler.Active ? row.Seed.Name + " will be crawled right after the current pass" : "Re-crawling " + row.Seed.Name);
         Refresh();
     }
 
     private void RecrawlAll()
     {
         if (!StashLightMod.IncludeLinked) { ItemActions.Toast("Turn Linked on first: links are only crawled while it is on", true); return; }
+        if (LinkCrawler.Active) { var (d, t) = LinkCrawler.Counts; ItemActions.Toast($"A crawl is already running ({d}/{t} links done)"); return; }
         LinkCrawler.Recrawl(null);
         ItemActions.Toast("Re-crawling all links (runs in the background)");
         Refresh();

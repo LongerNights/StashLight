@@ -34,7 +34,7 @@ public static class Api
     /// <summary>The same rows the Links panel shows: every link of yours with its crawl state and whether it is switched off.</summary>
     public static string Links()
     {
-        var seeds = CrawlPlanner.SeedsFrom(IndexService.Index.Entries).OrderBy(s => s.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
+        var seeds = CrawlPlanner.Distinct(CrawlPlanner.SeedsFrom(IndexService.Index.Entries)).OrderBy(s => s.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
         var state = IndexService.Parts.CrawlState();
         var off = CrawlPlanner.ParseDisabled(StashLightMod.Get(StashLightMod.DisabledLinksKey, ""));
         var sb = new StringBuilder();

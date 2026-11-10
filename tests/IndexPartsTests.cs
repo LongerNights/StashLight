@@ -18,6 +18,21 @@ public class IndexPartsTests
 
     private static string[] Ids(IndexParts p) => p.Build().Entries.Select(e => e.RecordId).OrderBy(x => x).ToArray();
 
+    [Fact]
+    public void PartialLinkedContent_ShowsUp_WithoutMarkingTheLinkCrawled_AndIsReplacedByTheFinalResult()
+    {
+        var p = new IndexParts();
+        Assert.False(p.HasLinked("U-x/R-1"));
+        p.SetLinkedPartial("U-x/R-1", new List<IndexEntry> { E("half", "R-a", "U-x", src: Source.Linked) });
+        Assert.True(p.HasLinked("U-x/R-1"));
+        Assert.Empty(p.CrawlState());                                   // no outcome recorded: an interrupted crawl is simply redone
+        Assert.Contains("R-a", Ids(p));
+        p.SetLinked("U-x/R-1", new List<IndexEntry> { E("half", "R-a", "U-x", src: Source.Linked), E("rest", "R-b", "U-x", src: Source.Linked) },
+                    new CrawlInfo("U-x/R-1", "x", DateTime.UtcNow, 2, 2, false, false));
+        Assert.Equal(new[] { "R-a", "R-b" }, Ids(p));
+        Assert.Single(p.CrawlState());
+    }
+
     // ------------------------------------------------------------ routing and changes
 
     [Fact]

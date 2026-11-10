@@ -387,4 +387,16 @@ public class LinkCrawlTests
         var parts = new IndexParts(); parts.Restore(read.ToParts());           // restoring must not choke on the missing parts
         Assert.Equal(0, parts.Build().Count);
     }
+
+    [Fact]
+    public void Distinct_KeepsTheFirstLinkPerTargetFolder()
+    {
+        var seeds = new List<LinkSeed>
+        {
+            new("U-me/R-1", "badges", "resrec:///U-x/R-a"),
+            new("U-me/R-2", "badges", "resrec:///u-x/r-a"),     // same folder, different link record (case differs)
+            new("U-me/R-3", "bluey", "resrec:///U-y/R-b"),
+        };
+        Assert.Equal(new[] { "U-me/R-1", "U-me/R-3" }, CrawlPlanner.Distinct(seeds).Select(x => x.Key).ToArray());
+    }
 }

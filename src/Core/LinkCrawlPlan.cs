@@ -75,6 +75,16 @@ public static class CrawlPlanner
     public static HashSet<string> KeepKeys(IEnumerable<LinkSeed> seeds, ISet<string> disabled)
         => new(seeds.Where(s => !IsDisabled(s, disabled)).Select(s => s.Key), StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// One seed per target folder: two link records to the same folder are crawled once (see <see cref="Plan"/>), so the Links panel
+    /// shows them once too (the first one in the order given, the same one the planner picks).
+    /// </summary>
+    public static List<LinkSeed> Distinct(IEnumerable<LinkSeed> seeds)
+    {
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        return seeds.Where(s => seen.Add(s.TargetUri)).ToList();
+    }
+
     /// <summary>The seeds of your own links, derived from the index: your entries of category "link" that point somewhere.</summary>
     public static List<LinkSeed> SeedsFrom(IEnumerable<IndexEntry> personalEntries)
         => personalEntries
