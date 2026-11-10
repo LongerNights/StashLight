@@ -350,6 +350,8 @@ So the old walk really did clog the engine's database for ~100 s after login, an
 
 - **Links panel** (`Links…` header button, `src/Mod/Ui/LinksPanel.cs`): every link with its crawl result, a per-link On/Off switch (writes `DisabledLinks`), per-link **Re-crawl** and **Re-crawl all** (forced re-crawl; needs Linked on). Row texts come from Core `LinkRows` (unit tested). Rows are built 12 per frame. Verified in game: 151 rows, summary "151 links · 72 crawled (38,046 items) · 12 unavailable · crawling now".
 - **Forced re-crawl**: `LinkCrawler.Recrawl(key?)` resets that link (or all), cancels the running pass and restarts it; log line `link crawl: forced a re-crawl of …`. Diagnostic: `Api.Recrawl(key)`, `Api.Links()`.
+- **Linked button cycle** (0.6.3): Off → On (linked items mixed in) → Only (just linked items; `LinkedOnly` setting, implies `IncludeLinked`).
+- **Crawl depth control** in the Links panel (− / + beside *Re-crawl all*, range 1–20, writes `LinkMaxDepth`). Changing it re-crawls all links once the clicking stops (2 s debounce), since a new limit only shows up after a re-crawl.
 - **List view** (`ListView` setting / View button): one row per result, with category, owner, date, copies.
 - **Keyboard navigation** (`KeyboardNav.cs`, unit tested; not hand-tested in game): arrows, Page Up/Down, Home/End move the selection, Enter = primary action, Esc clears search then selection. Active only while the dash shows Search and no text field is being edited.
 - **Parallel scoring**: indexes of 20k+ entries are scored on up to 4 cores; results are identical to the sequential path (tested). 100k entries: 4.6–15 ms per query.

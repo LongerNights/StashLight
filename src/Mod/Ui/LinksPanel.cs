@@ -27,7 +27,8 @@ internal sealed class LinksPanel
     private readonly RectTransform _host;
     private Slot _scrim = null!, _panel = null!;
     private RectTransform _panelRect = null!, _content = null!;
-    private UText _summary = null!;
+    private UText _summary = null!, _depthLabel = null!;
+    private int _depthVersion;
     private readonly List<Row> _rows = new();
     private List<LinkSeed> _seeds = new();
     private int _buildVersion;
@@ -48,7 +49,14 @@ internal sealed class LinksPanel
         var inner = UiKit.Rect(bg, "Inner", float2.Zero, float2.One, new float2(2f, 2f), new float2(-2f, -2f));
         UiKit.RoundedPanel(inner, Theme.Pane);
 
-        UiKit.Label(UiKit.Rect(_panelRect, "Title", new float2(0.03f, 0.90f), new float2(0.55f, 0.98f)), "Linked folders", TypeScale.Title);
+        UiKit.Label(UiKit.Rect(_panelRect, "Title", new float2(0.03f, 0.90f), new float2(0.28f, 0.98f)), "Linked folders", TypeScale.Title,
+                    Alignment.MiddleLeft, null, fit: true, minSize: 18f);
+
+        // crawl depth: how many links deep the crawler follows (your link = 1, a link inside it = 2, ...), left of Re-crawl all
+        UiKit.TextButton(UiKit.Rect(_panelRect, "DepthDown", new float2(0.29f, 0.905f), new float2(0.33f, 0.975f)), "-", (b, e) => ChangeDepth(-1), TypeScale.Body);
+        _depthLabel = UiKit.Label(UiKit.Rect(_panelRect, "Depth", new float2(0.335f, 0.90f), new float2(0.50f, 0.98f)), "", TypeScale.Body,
+                                  Alignment.MiddleCenter, null, fit: true, minSize: 12f);
+        UiKit.TextButton(UiKit.Rect(_panelRect, "DepthUp", new float2(0.505f, 0.905f), new float2(0.545f, 0.975f)), "+", (b, e) => ChangeDepth(+1), TypeScale.Body);
         _summary = UiKit.Label(UiKit.Rect(_panelRect, "Summary", new float2(0.03f, 0.83f), new float2(0.97f, 0.90f)), "", TypeScale.Body,
                                Alignment.MiddleLeft, UiKit.Muted, fit: true, minSize: 12f);
 
@@ -161,8 +169,35 @@ internal sealed class LinksPanel
         foreach (var r in _rows) Paint(r, off, state);
     }
 
+    private static int Depth => Math.Clamp(StashLightMod.Get(StashLightMod.LinkMaxDepthKey, 3), 1, 20);
+
+    private void ChangeDepth(int delta)
+    {
+        int depth = Math.Clamp(Depth + delta, 1, 20);
+        if (depth == Depth) return;
+        try { StashLightMod.Cfg?.Set(StashLightMod.LinkMaxDepthKey, depth); }
+        catch (Exception ex) { ResoniteMod.Warn("[StashLight] could not save the link depth: " + ex.Message); return; }
+        RefreshSummary();
+        if (!StashLightMod.IncludeLinked) return;                       // nothing is crawled while Linked is off; the new depth is used when it is turned on
+        // a deeper (or shallower) limit only shows up after the links are crawled again; wait until the +/- clicking stops, then do it
+        int version = ++_depthVersion;
+        var world = _host.World;
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(2000).ConfigureAwait(false);
+            world.RunSynchronously(() =>
+            {
+                if (version != _depthVersion || _host.Slot.IsRemoved) return;
+                LinkCrawler.Recrawl(null);
+                ItemActions.Toast($"Link depth {Depth}: re-crawling all links in the background");
+                Refresh();
+            });
+        });
+    }
+
     private void RefreshSummary()
     {
+        _depthLabel.Content.Value = $"Depth: {Depth}";
         _summary.Content.Value = LinkRows.Summary(_seeds, IndexService.Parts.CrawlState(), CrawlPlanner.ParseDisabled(Setting),
                                                   StashLightMod.IncludeLinked, LinkCrawler.Active);
     }

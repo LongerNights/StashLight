@@ -7,7 +7,7 @@ namespace StashLight;
 /// <summary>Mod entry point (ResoniteModLoader mod running under MonkeyLoader's RML compat pack).</summary>
 public sealed class StashLightMod : ResoniteMod
 {
-    public const string VERSION = "0.6.2";
+    public const string VERSION = "0.6.3";
 
     public override string Name => "StashLight";
     public override string Author => "Winter";
@@ -38,6 +38,10 @@ public sealed class StashLightMod : ResoniteMod
     [AutoRegisterConfigKey]
     public static readonly ModConfigurationKey<bool> IncludeLinkedKey =
         new("IncludeLinked", "Include items from linked folders (the Linked button)", () => false);
+
+    [AutoRegisterConfigKey]
+    public static readonly ModConfigurationKey<bool> LinkedOnlyKey =
+        new("LinkedOnly", "Show only linked items (the third state of the Linked button)", () => false);
 
     [AutoRegisterConfigKey]
     public static readonly ModConfigurationKey<bool> AnimationsKey =
@@ -103,6 +107,8 @@ public sealed class StashLightMod : ResoniteMod
 
     /// <summary>The Linked toggle in the Search screen (also a setting): include other people's folders reached through your links.</summary>
     internal static bool IncludeLinked => Get(IncludeLinkedKey, false);
+    /// <summary>Linked button, third state: results are limited to linked content (implies IncludeLinked).</summary>
+    internal static bool LinkedOnly => IncludeLinked && Get(LinkedOnlyKey, false);
 
     [AutoRegisterConfigKey] public static readonly ModConfigurationKey<dummy> HeaderAdvanced = Header("_advanced", "Troubleshooting");
 

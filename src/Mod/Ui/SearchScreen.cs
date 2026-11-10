@@ -431,7 +431,7 @@ internal sealed class SearchScreen
         if (resetScroll) _resetScrollNext = true;
         int v = Interlocked.Increment(ref _version);
         string text = _text; string? cat = _category; string scopeKey = _scopeKey; int sortIdx = _sortIndex;
-        bool includeLinked = IncludeLinked;
+        bool includeLinked = IncludeLinked, linkedOnly = LinkedOnly;
         _ = Task.Run(async () =>
         {
             try
@@ -440,7 +440,7 @@ internal sealed class SearchScreen
                 if (v != Volatile.Read(ref _version)) return;
                 var q = Query.Parse(text);
                 ApplyScope(q, scopeKey);
-                q.ExcludeLinked = !includeLinked;
+                ApplyLinkedMode(q, includeLinked, linkedOnly);
                 var index = IndexService.Index;
                 var res = QueryEngine.Search(index, q, Sorts[sortIdx], 3000, default, true, cat);
                 string status = BuildStatus(res, index, includeLinked);
@@ -575,11 +575,26 @@ internal sealed class SearchScreen
     // ---------------------------------------------------------------- linked toggle
 
     private static bool IncludeLinked => StashLightMod.Get(StashLightMod.IncludeLinkedKey, false);
+    private static bool LinkedOnly => StashLightMod.LinkedOnly;
+
+    /// <summary>Applies the Linked button's state to a query: Off hides linked items, On shows them with the rest, Only shows nothing else.</summary>
+    private static void ApplyLinkedMode(Query q, bool includeLinked, bool linkedOnly)
+    {
+        q.ExcludeLinked = !includeLinked;
+        if (includeLinked && linkedOnly) q.OnlySource = Source.Linked;
+    }
 
     private void ToggleLinked()
     {
-        bool now = !IncludeLinked;
-        try { StashLightMod.Cfg?.Set(StashLightMod.IncludeLinkedKey, now); }
+        // cycle: Off -> On (linked items mixed in) -> Only (just linked items) -> Off
+        bool wasOn = IncludeLinked, wasOnly = LinkedOnly;
+        bool now = !wasOn || !wasOnly;                          // Off -> on, On -> still on (as Only), Only -> off
+        bool only = wasOn && !wasOnly;
+        try
+        {
+            StashLightMod.Cfg?.Set(StashLightMod.IncludeLinkedKey, now);
+            StashLightMod.Cfg?.Set(StashLightMod.LinkedOnlyKey, only);
+        }
         catch (Exception ex) { ResoniteMod.Warn("[StashLight] could not save the Linked setting: " + ex.Message); }
         RefreshLinkedButton();
         if (now) LinkCrawler.Wake(); else LinkCrawler.Cancel();     // turning it on starts crawling; off stops it
@@ -590,7 +605,7 @@ internal sealed class SearchScreen
     {
         if (_linkedButton == null) return;
         bool on = IncludeLinked;
-        UiKit.SetLabel(_linkedButton, on ? "Linked: On" : "Linked: Off");
+        UiKit.SetLabel(_linkedButton, !on ? "Linked: Off" : LinkedOnly ? "Linked: Only" : "Linked: On");
         UiKit.SetButtonColor(_linkedButton, on ? Theme.ButtonSelected : Theme.Button);
     }
 
@@ -646,10 +661,10 @@ internal sealed class SearchScreen
         // Counts are the number of result rows that scope would show (the same number the All chip shows once it is selected):
         // saved copies of one item collapse into one row, and linked content only counts while the Linked toggle is on.
         var index = IndexService.Index;
-        bool includeLinked = IncludeLinked;
+        bool includeLinked = IncludeLinked, linkedOnly = LinkedOnly;
         int RowsIn(string scopeKey)
         {
-            var q = new Query(); ApplyScope(q, scopeKey); q.ExcludeLinked = !includeLinked;
+            var q = new Query(); ApplyScope(q, scopeKey); ApplyLinkedMode(q, includeLinked, linkedOnly);
             return QueryEngine.Search(index, q, SortMode.Relevance, 1, default, true, null).Total;
         }
 
