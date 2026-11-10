@@ -16,15 +16,8 @@ namespace StashLight.Ui;
 /// </summary>
 internal static class ItemActions
 {
-    internal static void Toast(string message, bool error = false)
-    {
-        try
-        {
-            Userspace.UserspaceWorld?.RunSynchronously(() =>
-                NotificationMessage.SpawnTextMessage((LocaleString)message, error ? colorX.Red : colorX.White));
-        }
-        catch (Exception ex) { ResoniteMod.Warn("[StashLight] toast failed: " + ex.Message); }
-    }
+    /// <summary>A dash toast (not an object spawned in front of the user).</summary>
+    internal static void Toast(string message, bool error = false) => Toasts.Show(message, error);
 
     public static async Task<Record?> FetchRecordAsync(IndexEntry e)
     {
