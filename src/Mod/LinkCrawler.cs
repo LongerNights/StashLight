@@ -123,11 +123,11 @@ internal static class LinkCrawler
         try
         {
             var limits = new CrawlLimits(
-                MaxDepth: StashLightMod.Get(StashLightMod.LinkMaxDepthKey, 3),
+                MaxDepth: StashLightMod.Get(StashLightMod.LinkMaxDepthKey, 5),
                 MaxFoldersPerSeed: StashLightMod.Get(StashLightMod.LinkMaxFoldersPerSeedKey, 500),
                 MaxFoldersTotal: StashLightMod.Get(StashLightMod.LinkMaxFoldersTotalKey, 5000),
-                RequestsPerSecond: StashLightMod.Get(StashLightMod.LinkRequestsPerSecondKey, 5),
-                Ttl: TimeSpan.FromHours(Math.Max(1, StashLightMod.Get(StashLightMod.LinkRefreshHoursKey, 24))));
+                RequestsPerSecond: StashLightMod.Get(StashLightMod.LinkRequestsPerSecondKey, 10),
+                Ttl: TimeSpan.FromHours(Math.Max(1, StashLightMod.Get(StashLightMod.LinkRefreshHoursKey, 168))));
             var disabled = CrawlPlanner.ParseDisabled(StashLightMod.Get(StashLightMod.DisabledLinksKey, ""));
             var parts = IndexService.Parts;
 

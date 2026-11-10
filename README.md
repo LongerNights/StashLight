@@ -17,7 +17,7 @@ A Resonite mod that adds a **Search** tab to the dash for finding things in your
 1. Records already in the engine's local database, read in bulk. This is quick and needs no network.
 2. Your folder tree, listed read-only through the cloud records API in the background, with a few folders loading at once.
 3. Group inventories you belong to, and Local Storage if installed.
-4. *(Optional)* **Linked folders.** The crawler follows your link records into other owners' public folders slowly (about 5 requests a second, depth- and size-limited), one link at a time. Use the **Links…** panel to switch single links off or re-crawl them.
+4. *(Optional)* **Linked folders.** The crawler follows your link records into other owners' public folders slowly (at most 10 requests a second by default, depth- and size-limited, and each link is refreshed weekly), one link at a time. Use the **Links…** panel to switch single links off or re-crawl them.
 
 Changes you make in-game (saving, deleting) update the index live. A periodic background refresh catches the rest.
 

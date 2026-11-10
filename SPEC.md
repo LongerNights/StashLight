@@ -234,10 +234,10 @@ All actions use the verified engine paths in 3.7. **Copy link** copies `resrec:/
 | Key | Default | Notes |
 |---|---|---|
 | `EnableLinkCrawl` | true | Master switch for G2 |
-| `LinkMaxDepth` | 3 | |
+| `LinkMaxDepth` | 5 | |
 | `LinkMaxFoldersPerSeed` / `LinkMaxFoldersTotal` | 500 / 5,000 | |
-| `LinkRequestsPerSecond` / `LinkConcurrency` | 5 / 4 | |
-| `LinkRefreshHours` | 24 | |
+| `LinkRequestsPerSecond` | 10 | |
+| `LinkRefreshHours` | 168 | |
 | `DisabledLinks` | [] | Record IDs of personal links to skip |
 | `CacheCrawlInLocalDB` | false | Write crawled records into the engine LocalDB |
 | `DefaultView` | Grid | Grid / List |
@@ -299,9 +299,9 @@ All actions use the verified engine paths in 3.7. **Copy link** copies `resrec:/
 
 **Design (all from what the slowness investigation measured):**
 - **Reads only, through direct cloud listings** (`Cloud.Records.GetRecords` / `GetRecord(Uri)`), never `RecordDirectory`, so nothing is written to the engine's database. `GetRecord(Uri)` understands both link forms (150 of the user's 151 links are `resrec:///owner/R-id`, one is a path link).
-- **Polite:** one request at a time through `MinIntervalGate` (default 5/s, `LinkRequestsPerSecond`); a timeout/5xx is retried within the pass and never recorded as "unavailable"; four transient failures in a row pause the pass for 10 minutes; 404/403/401/410 mean the link is really gone.
-- **Bounded:** link-hop depth 3 (`LinkMaxDepth`), 500 folders per link (`LinkMaxFoldersPerLink`), 5,000 folders per pass (`LinkMaxFoldersPerPass`; the rest continues on the next pass 2 minutes later). Folders reached by two links are read once per pass. Two links to the same target are crawled once.
-- **Incremental, resumable, persisted:** each link's result is stored as its own part (`IndexParts.SetLinked`), published as soon as the link finishes, and saved to the disk cache at least every 60 s together with a `CrawlInfo` per link (when, folders, items, truncated, unavailable). A link is crawled again only after `LinkRefreshHours` (24); unavailable links are retried after 24 h. Later launches therefore normally do no crawl network work at all. Cache files written before M4 still load (no `Linked`/`Crawl` = empty).
+- **Polite:** one request at a time through `MinIntervalGate` (default 10/s, `LinkRequestsPerSecond`); a timeout/5xx is retried within the pass and never recorded as "unavailable"; four transient failures in a row pause the pass for 10 minutes; 404/403/401/410 mean the link is really gone.
+- **Bounded:** link-hop depth 5 (`LinkMaxDepth`), 500 folders per link (`LinkMaxFoldersPerLink`), 5,000 folders per pass (`LinkMaxFoldersPerPass`; the rest continues on the next pass 2 minutes later). Folders reached by two links are read once per pass. Two links to the same target are crawled once.
+- **Incremental, resumable, persisted:** each link's result is stored as its own part (`IndexParts.SetLinked`), published as soon as the link finishes, and saved to the disk cache at least every 60 s together with a `CrawlInfo` per link (when, folders, items, truncated, unavailable). A link is crawled again only after `LinkRefreshHours` (168, a week); unavailable links are retried after 24 h. Later launches therefore normally do no crawl network work at all. Cache files written before M4 still load (no `Linked`/`Crawl` = empty).
 - **Pruning:** results of links you delete or list in `DisabledLinks` (names, link record ids, or `owner/id`, comma-separated) are dropped. Pruning is skipped when no links are visible, so an empty index can never wipe the crawled content. Deleting a link record also drops what was crawled through it.
 - **UI:** the status line shows "crawling links 14/140: <link name>" while a pass runs; results appear link by link. With the toggle off the crawled items stay in the cache (hidden), so turning it on later is instant.
 - **Core (unit-tested, 61 tests in all):** `CrawlPlanner` (never-crawled first, then stalest; TTL; unavailable retry; disabled by name/key/id; duplicate targets; `SeedsFrom` the index's own link entries), `MinIntervalGate` (fake-clock spacing test plus a real-clock throttle test), linked parts (replace per link, retain, delete-link cascade, snapshot dedupe, cache round trip, pre-M4 file).

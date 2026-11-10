@@ -83,7 +83,7 @@ public sealed class StashLightMod : ResoniteMod
 
     [AutoRegisterConfigKey]
     public static readonly ModConfigurationKey<int> LinkMaxDepthKey =
-        new("LinkMaxDepth", "Follow links this many levels deep (3 = links inside links inside links)", () => 3, false, v => v >= 1 && v <= 20);
+        new("LinkMaxDepth", "Follow links this many levels deep (5 = up to links inside links inside links...)", () => 5, false, v => v >= 1 && v <= 20);
 
     [AutoRegisterConfigKey]
     public static readonly ModConfigurationKey<int> LinkMaxFoldersPerSeedKey =
@@ -95,11 +95,11 @@ public sealed class StashLightMod : ResoniteMod
 
     [AutoRegisterConfigKey]
     public static readonly ModConfigurationKey<double> LinkRequestsPerSecondKey =
-        new("LinkRequestsPerSecond", "Most cloud requests per second", () => 5.0, false, v => v > 0.0 && v <= 50.0);
+        new("LinkRequestsPerSecond", "Most cloud requests per second", () => 10.0, false, v => v > 0.0 && v <= 50.0);
 
     [AutoRegisterConfigKey]
     public static readonly ModConfigurationKey<int> LinkRefreshHoursKey =
-        new("LinkRefreshHours", "Crawl each link again after N hours", () => 24, false, v => v >= 1);
+        new("LinkRefreshHours", "Crawl each link again after N hours (168 = weekly; Re-crawl in the Links panel forces it)", () => 168, false, v => v >= 1);
 
     [AutoRegisterConfigKey]
     public static readonly ModConfigurationKey<string> DisabledLinksKey =
@@ -133,7 +133,7 @@ public sealed class StashLightMod : ResoniteMod
             try { harmony.CreateClassProcessor(type).Patch(); Msg($"patched: {what}"); }
             catch (Exception ex) { Error($"failed to patch ({what}); that feature is off: {ex}"); }
         }
-        Msg($"settings read: IncludeLinked={IncludeLinked}, ListView={Get(ListViewKey, false)}, LinkMaxDepth={Get(LinkMaxDepthKey, 3)}, "
+        Msg($"settings read: IncludeLinked={IncludeLinked}, ListView={Get(ListViewKey, false)}, LinkMaxDepth={Get(LinkMaxDepthKey, 5)}, "
             + $"StartupRefreshDelaySeconds={Get(StartupRefreshDelaySecondsKey, 60)}, UseEngineWalker={Get(UseEngineWalkerKey, false)}, "
             + $"DisabledLinks='{Get(DisabledLinksKey, "")}'");
         IndexService.Start();

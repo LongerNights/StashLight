@@ -198,7 +198,7 @@ internal sealed class LinksPanel
         foreach (var r in _rows) Paint(r, off, state);
     }
 
-    private static int Depth => Math.Clamp(StashLightMod.Get(StashLightMod.LinkMaxDepthKey, 3), 1, 20);
+    private static int Depth => Math.Clamp(StashLightMod.Get(StashLightMod.LinkMaxDepthKey, 5), 1, 20);
 
     private void ChangeDepth(int delta)
     {
