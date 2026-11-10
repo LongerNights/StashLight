@@ -1,0 +1,18 @@
+# build output
+bin/
+obj/
+*.user
+.vs/
+
+# decompiled engine source used for local verification (proprietary, never commit)
+/FrooxEngine/
+/FrooxEngine.Store/
+/SkyFrost.Base/
+/SkyFrost.Base.Models/
+/decomp/
+
+# local tooling and logs
+/tools/ilspycmd*/
+/lib/
+Bootstrapper.log
+*.log

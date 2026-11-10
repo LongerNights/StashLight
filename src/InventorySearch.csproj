@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>InventorySearch</AssemblyName>
+    <RootNamespace>InventorySearch</RootNamespace>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <!-- Set true to copy the built DLL into the game's rml_mods folder after build. -->
+    <DeployToGame Condition="'$(DeployToGame)' == ''">false</DeployToGame>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="ResoniteModLoader"><HintPath>$(GameDir)Libraries\ResoniteModLoader.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="0Harmony"><HintPath>$(GameDir)rml_libs\0Harmony.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="FrooxEngine"><HintPath>$(GameDir)FrooxEngine.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="FrooxEngine.Store"><HintPath>$(GameDir)FrooxEngine.Store.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="SkyFrost.Base"><HintPath>$(GameDir)SkyFrost.Base.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="SkyFrost.Base.Models"><HintPath>$(GameDir)SkyFrost.Base.Models.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Renderite.Shared"><HintPath>$(GameDir)Renderite.Shared.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Elements.Core"><HintPath>$(GameDir)Elements.Core.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Elements.Assets"><HintPath>$(GameDir)Elements.Assets.dll</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+
+  <Target Name="DeployMod" AfterTargets="Build" Condition="'$(DeployToGame)' == 'true'">
+    <Copy SourceFiles="$(OutDir)InventorySearch.dll" DestinationFolder="$(GameDir)rml_mods" />
+    <Message Importance="high" Text="Deployed InventorySearch.dll to $(GameDir)rml_mods (restart Resonite to load)." />
+  </Target>
+</Project>
