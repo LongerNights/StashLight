@@ -26,6 +26,9 @@ internal static class LinkCrawler
     private static int _running;
     private static CancellationTokenSource? _cts;
     private static volatile bool _wake;
+    /// <summary>Folders already covered by an earlier pass of the same crawl. A pass that stops at its folder budget hands this on
+    /// so the next pass (which starts at once) does not fetch them again; any forced re-crawl or finished crawl starts clean.</summary>
+    private static HashSet<string>? _carriedVisited;
     private static DateTime _nextCheckUtc = DateTime.MinValue;
 
     public enum LinkState { Idle, Queued, Crawling }
@@ -66,6 +69,7 @@ internal static class LinkCrawler
         // a link already queued or being crawled in the running pass needs nothing: it is crawled anyway
         if (key != null && Active && StateOf(key, out _) != LinkState.Idle) return 0;
         int n = IndexService.Parts.ForgetCrawl(key);
+        _carriedVisited = null;
         _nextCheckUtc = DateTime.MinValue;
         _wake = true;
         // restart = end the running pass so a fresh one starts (needed when the limits changed); otherwise the forgotten links
@@ -145,7 +149,8 @@ internal static class LinkCrawler
             lock (_stateLock) { _queued = new HashSet<string>(plan.Select(p => p.Key), StringComparer.OrdinalIgnoreCase); _currentKey = null; _currentFolders = 0; }
             Counts = (0, plan.Count);
             var gate = new MinIntervalGate(limits.RequestsPerSecond);
-            var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var visited = _carriedVisited ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            _carriedVisited = null;
             int folders = 0, entries = 0, done = 0, unavailable = 0, truncated = 0, transientInRow = 0;
             var lastSave = Stopwatch.StartNew();
 
@@ -154,14 +159,16 @@ internal static class LinkCrawler
                 if (ct.IsCancellationRequested || !Enabled) { IndexService.Note("link crawl: stopped (Linked switched off or logged out)"); break; }
                 if (folders >= limits.MaxFoldersTotal)
                 {
-                    IndexService.Note($"link crawl: reached the {limits.MaxFoldersTotal}-folder limit for this pass; the remaining links continue on the next pass");
-                    _nextCheckUtc = DateTime.UtcNow.AddMinutes(2);
+                    // a checkpoint, not a stop: save, re-plan (new/removed/switched-off links) and carry straight on
+                    IndexService.Note($"link crawl: {folders} folders done in this pass; saving and continuing with the remaining links");
+                    _carriedVisited = visited;
+                    _wake = true; _nextCheckUtc = DateTime.MinValue;
                     break;
                 }
                 Progress = $"crawling links {done + 1}/{plan.Count}: {seed.Name}";
                 lock (_stateLock) { _queued.Remove(seed.Key); _currentKey = seed.Key; _currentFolders = 0; }
 
-                var r = await CrawlSeedAsync(engine, seed, limits, gate, visited, limits.MaxFoldersTotal - folders, ct).ConfigureAwait(false);
+                var r = await CrawlSeedAsync(engine, seed, limits, gate, visited, ct).ConfigureAwait(false);
                 if (r.Transient)
                 {
                     // network trouble: do not record an outcome (so the link is tried again), and back off after a few in a row
@@ -199,10 +206,10 @@ internal static class LinkCrawler
     // ------------------------------------------------------------------ one link
 
     private static async Task<SeedResult> CrawlSeedAsync(Engine engine, LinkSeed seed, CrawlLimits limits, MinIntervalGate gate,
-                                                         HashSet<string> visited, int totalFoldersLeft, CancellationToken ct)
+                                                         HashSet<string> visited, CancellationToken ct)
     {
         var entries = new List<IndexEntry>();
-        int folders = 0, cap = Math.Max(1, Math.Min(limits.MaxFoldersPerSeed, totalFoldersLeft));
+        int folders = 0, cap = Math.Max(1, limits.MaxFoldersPerSeed);      // the pass budget is only checked between links, so a link is never cut short by it
         bool truncated = false;
         // A link with nothing crawled yet shows what it has found so far (every few seconds) instead of appearing all at once when
         // it is finished. A re-crawl of a link that already has content keeps showing the old content until the new one is complete.

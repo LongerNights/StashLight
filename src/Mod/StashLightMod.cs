@@ -7,7 +7,7 @@ namespace StashLight;
 /// <summary>Mod entry point (ResoniteModLoader mod running under MonkeyLoader's RML compat pack).</summary>
 public sealed class StashLightMod : ResoniteMod
 {
-    public const string VERSION = "0.6.3";
+    public const string VERSION = "0.6.4";
 
     public override string Name => "StashLight";
     public override string Author => "Winter";
@@ -91,7 +91,7 @@ public sealed class StashLightMod : ResoniteMod
 
     [AutoRegisterConfigKey]
     public static readonly ModConfigurationKey<int> LinkMaxFoldersTotalKey =
-        new("LinkMaxFoldersPerPass", "Most folders read per background pass", () => 5000, false, v => v >= 1);
+        new("LinkMaxFoldersPerPass", "Folders per pass before it saves and carries on (a checkpoint, not a stop)", () => 5000, false, v => v >= 1);
 
     [AutoRegisterConfigKey]
     public static readonly ModConfigurationKey<double> LinkRequestsPerSecondKey =
