@@ -1,4 +1,4 @@
-namespace InventorySearch.Core;
+namespace StashLight.Core;
 
 /// <summary>One of your own links to someone else's folder. Key = "&lt;owner&gt;/&lt;link record id&gt;" (stable across sessions).</summary>
 public sealed record LinkSeed(string Key, string Name, string TargetUri);

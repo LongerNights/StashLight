@@ -1,4 +1,4 @@
-namespace InventorySearch.Core;
+namespace StashLight.Core;
 
 /// <summary>An owner id with a display name, e.g. a group, or the Local Storage mod's inventory.</summary>
 public sealed record SharedTarget(string OwnerId, string Name, bool IsLocal);

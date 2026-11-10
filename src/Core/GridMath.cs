@@ -1,4 +1,4 @@
-namespace InventorySearch.Core;
+namespace StashLight.Core;
 
 /// <summary>
 /// Window math for the virtualized grid, kept engine-free so it can be unit tested.

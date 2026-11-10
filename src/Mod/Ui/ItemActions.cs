@@ -1,13 +1,13 @@
 using Elements.Core;
 using FrooxEngine;
 using FrooxEngine.Store;
-using InventorySearch.Core;
+using StashLight.Core;
 using ResoniteModLoader;
 using FrooxEngine.Undo;
 using SkyFrost.Base;
 using Record = FrooxEngine.Store.Record;
 
-namespace InventorySearch.Ui;
+namespace StashLight.Ui;
 
 /// <summary>
 /// What the buttons do. Mirrors the engine's own InventoryBrowser behaviour (verified in decompiled source):
@@ -23,7 +23,7 @@ internal static class ItemActions
             Userspace.UserspaceWorld?.RunSynchronously(() =>
                 NotificationMessage.SpawnTextMessage((LocaleString)message, error ? colorX.Red : colorX.White));
         }
-        catch (Exception ex) { ResoniteMod.Warn("[InventorySearch] toast failed: " + ex.Message); }
+        catch (Exception ex) { ResoniteMod.Warn("[StashLight] toast failed: " + ex.Message); }
     }
 
     public static async Task<Record?> FetchRecordAsync(IndexEntry e)
@@ -46,7 +46,7 @@ internal static class ItemActions
                 if (rec == null || string.IsNullOrEmpty(rec.AssetURI)) { Toast("Could not load that item", true); return; }
                 SpawnRecord(rec);
             }
-            catch (Exception ex) { ResoniteMod.Error("[InventorySearch] spawn failed: " + ex); Toast("Spawn failed", true); }
+            catch (Exception ex) { ResoniteMod.Error("[StashLight] spawn failed: " + ex); Toast("Spawn failed", true); }
         });
     }
 
@@ -90,7 +90,7 @@ internal static class ItemActions
                 if (rec == null || string.IsNullOrEmpty(rec.AssetURI)) { Toast("Could not load that facet", true); return; }
                 SpawnRecord(rec, dashWorld);
             }
-            catch (Exception ex) { ResoniteMod.Error("[InventorySearch] spawn facet failed: " + ex); Toast("Spawn facet failed", true); }
+            catch (Exception ex) { ResoniteMod.Error("[StashLight] spawn facet failed: " + ex); Toast("Spawn facet failed", true); }
         });
     }
 
@@ -104,7 +104,7 @@ internal static class ItemActions
                 if (rec == null) { Toast("Could not load that avatar", true); return; }
                 Engine.Current.WorldManager.FocusedWorld?.TryEquipAvatar(rec);
             }
-            catch (Exception ex) { ResoniteMod.Error("[InventorySearch] equip failed: " + ex); Toast("Equip failed", true); }
+            catch (Exception ex) { ResoniteMod.Error("[StashLight] equip failed: " + ex); Toast("Equip failed", true); }
         });
     }
 
@@ -175,7 +175,7 @@ internal static class ItemActions
                     });
                 });
             }
-            catch (Exception ex) { ResoniteMod.Error("[InventorySearch] open folder failed: " + ex); Toast("Could not open folder", true); }
+            catch (Exception ex) { ResoniteMod.Error("[StashLight] open folder failed: " + ex); Toast("Could not open folder", true); }
         });
     }
 }

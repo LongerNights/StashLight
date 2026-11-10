@@ -1,11 +1,11 @@
 using Elements.Core;
 using FrooxEngine;
 using FrooxEngine.UIX;
-using InventorySearch.Core;
+using StashLight.Core;
 using ResoniteModLoader;
 using UText = FrooxEngine.UIX.Text;
 
-namespace InventorySearch.Ui;
+namespace StashLight.Ui;
 
 /// <summary>
 /// The "Links" panel: every link of yours with what its crawl found, a per-link On/Off switch (writes the DisabledLinks
@@ -114,7 +114,7 @@ internal sealed class LinksPanel
             {
                 if (version != _buildVersion || !IsOpen || _host.Slot.IsRemoved) return;
                 try { CreateRow(i, _seeds[i]); }
-                catch (Exception ex) { ResoniteMod.Warn("[InventorySearch] links panel row failed: " + ex.Message); return; }
+                catch (Exception ex) { ResoniteMod.Warn("[StashLight] links panel row failed: " + ex.Message); return; }
                 if (i % 12 == 11) await default(NextUpdate);
             }
         });
@@ -139,7 +139,7 @@ internal sealed class LinksPanel
         Paint(row, CrawlPlanner.ParseDisabled(Setting), IndexService.Parts.CrawlState());
     }
 
-    private static string Setting => InventorySearchMod.Get(InventorySearchMod.DisabledLinksKey, "");
+    private static string Setting => StashLightMod.Get(StashLightMod.DisabledLinksKey, "");
 
     private static void Paint(Row row, ISet<string> disabled, IReadOnlyDictionary<string, CrawlInfo> state)
     {
@@ -164,7 +164,7 @@ internal sealed class LinksPanel
     private void RefreshSummary()
     {
         _summary.Content.Value = LinkRows.Summary(_seeds, IndexService.Parts.CrawlState(), CrawlPlanner.ParseDisabled(Setting),
-                                                  InventorySearchMod.IncludeLinked, LinkCrawler.Active);
+                                                  StashLightMod.IncludeLinked, LinkCrawler.Active);
     }
 
     // ---------------------------------------------------------------- actions
@@ -174,15 +174,15 @@ internal sealed class LinksPanel
         string current = Setting;
         bool disableNow = !CrawlPlanner.IsDisabled(row.Seed, CrawlPlanner.ParseDisabled(current));
         string updated = LinkRows.ToggleDisabled(current, row.Seed, _seeds, disableNow);
-        try { InventorySearchMod.Cfg?.Set(InventorySearchMod.DisabledLinksKey, updated); }
-        catch (Exception ex) { ResoniteMod.Warn("[InventorySearch] could not save DisabledLinks: " + ex.Message); }
+        try { StashLightMod.Cfg?.Set(StashLightMod.DisabledLinksKey, updated); }
+        catch (Exception ex) { ResoniteMod.Warn("[StashLight] could not save DisabledLinks: " + ex.Message); }
         LinkCrawler.ApplyDisabledChange();        // drops its items now when switched off; crawls it when switched back on
         Refresh();
     }
 
     private void RecrawlRow(Row row)
     {
-        if (!InventorySearchMod.IncludeLinked) { ItemActions.Toast("Turn Linked on first: links are only crawled while it is on", true); return; }
+        if (!StashLightMod.IncludeLinked) { ItemActions.Toast("Turn Linked on first: links are only crawled while it is on", true); return; }
         if (CrawlPlanner.IsDisabled(row.Seed, CrawlPlanner.ParseDisabled(Setting))) { ItemActions.Toast("This link is switched off; switch it on first", true); return; }
         LinkCrawler.Recrawl(row.Seed.Key);
         ItemActions.Toast("Re-crawling " + row.Seed.Name);
@@ -191,7 +191,7 @@ internal sealed class LinksPanel
 
     private void RecrawlAll()
     {
-        if (!InventorySearchMod.IncludeLinked) { ItemActions.Toast("Turn Linked on first: links are only crawled while it is on", true); return; }
+        if (!StashLightMod.IncludeLinked) { ItemActions.Toast("Turn Linked on first: links are only crawled while it is on", true); return; }
         LinkCrawler.Recrawl(null);
         ItemActions.Toast("Re-crawling all links (runs in the background)");
         Refresh();

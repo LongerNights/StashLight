@@ -1,7 +1,7 @@
 using FrooxEngine.Store;
-using InventorySearch.Core;
+using StashLight.Core;
 
-namespace InventorySearch;
+namespace StashLight;
 
 internal static class RecordMapper
 {

@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using FrooxEngine;
 
-namespace InventorySearch;
+namespace StashLight;
 
 /// <summary>
 /// Diagnostic: the engine's local database (LiteDB) serves its cached-records, asset-lookup and variable queries through ONE

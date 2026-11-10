@@ -1,11 +1,11 @@
 using System.Diagnostics;
 using System.Net;
 using FrooxEngine;
-using InventorySearch.Core;
+using StashLight.Core;
 using ResoniteModLoader;
 using Record = FrooxEngine.Store.Record;
 
-namespace InventorySearch;
+namespace StashLight;
 
 /// <summary>
 /// M4: indexes the content of the folders YOUR links point to (other people's / groups' folders), so it can be searched.
@@ -32,7 +32,7 @@ internal static class LinkCrawler
     public static string Progress { get; private set; } = "";
     public static bool Active => Volatile.Read(ref _running) == 1;
 
-    private static bool Enabled => InventorySearchMod.IncludeLinked;
+    private static bool Enabled => StashLightMod.IncludeLinked;
 
     /// <summary>
     /// Forces a re-crawl: of one link (its key), or of all links (null). Forgets when they were last crawled and, if a pass is
@@ -55,7 +55,7 @@ internal static class LinkCrawler
     /// </summary>
     public static void ApplyDisabledChange()
     {
-        var disabled = CrawlPlanner.ParseDisabled(InventorySearchMod.Get(InventorySearchMod.DisabledLinksKey, ""));
+        var disabled = CrawlPlanner.ParseDisabled(StashLightMod.Get(StashLightMod.DisabledLinksKey, ""));
         var seeds = CrawlPlanner.SeedsFrom(IndexService.Index.Entries);
         if (seeds.Count > 0)
         {
@@ -93,12 +93,12 @@ internal static class LinkCrawler
         try
         {
             var limits = new CrawlLimits(
-                MaxDepth: InventorySearchMod.Get(InventorySearchMod.LinkMaxDepthKey, 3),
-                MaxFoldersPerSeed: InventorySearchMod.Get(InventorySearchMod.LinkMaxFoldersPerSeedKey, 500),
-                MaxFoldersTotal: InventorySearchMod.Get(InventorySearchMod.LinkMaxFoldersTotalKey, 5000),
-                RequestsPerSecond: InventorySearchMod.Get(InventorySearchMod.LinkRequestsPerSecondKey, 5),
-                Ttl: TimeSpan.FromHours(Math.Max(1, InventorySearchMod.Get(InventorySearchMod.LinkRefreshHoursKey, 24))));
-            var disabled = CrawlPlanner.ParseDisabled(InventorySearchMod.Get(InventorySearchMod.DisabledLinksKey, ""));
+                MaxDepth: StashLightMod.Get(StashLightMod.LinkMaxDepthKey, 3),
+                MaxFoldersPerSeed: StashLightMod.Get(StashLightMod.LinkMaxFoldersPerSeedKey, 500),
+                MaxFoldersTotal: StashLightMod.Get(StashLightMod.LinkMaxFoldersTotalKey, 5000),
+                RequestsPerSecond: StashLightMod.Get(StashLightMod.LinkRequestsPerSecondKey, 5),
+                Ttl: TimeSpan.FromHours(Math.Max(1, StashLightMod.Get(StashLightMod.LinkRefreshHoursKey, 24))));
+            var disabled = CrawlPlanner.ParseDisabled(StashLightMod.Get(StashLightMod.DisabledLinksKey, ""));
             var parts = IndexService.Parts;
 
             var seeds = CrawlPlanner.SeedsFrom(IndexService.Index.Entries);
@@ -250,7 +250,7 @@ internal static class LinkCrawler
         catch (OperationCanceledException) { throw; }
         catch (ArgumentException) { return (null, HttpStatusCode.NotFound); }       // not a record URI at all: nothing to crawl
         catch (UriFormatException) { return (null, HttpStatusCode.NotFound); }
-        catch (Exception ex) { ResoniteMod.Warn($"[InventorySearch] resolving a link failed: {ex.Message}"); return (null, HttpStatusCode.RequestTimeout); }
+        catch (Exception ex) { ResoniteMod.Warn($"[StashLight] resolving a link failed: {ex.Message}"); return (null, HttpStatusCode.RequestTimeout); }
     }
 
     private static async Task<(List<Record>? list, HttpStatusCode state)> ListAsync(Engine engine, string owner, string path, MinIntervalGate gate, CancellationToken ct)
@@ -262,6 +262,6 @@ internal static class LinkCrawler
             return res.IsOK && res.Entity != null ? (res.Entity, res.State) : (null, res.State);
         }
         catch (OperationCanceledException) { throw; }
-        catch (Exception ex) { ResoniteMod.Warn($"[InventorySearch] listing a linked folder failed: {ex.Message}"); return (null, HttpStatusCode.RequestTimeout); }
+        catch (Exception ex) { ResoniteMod.Warn($"[StashLight] listing a linked folder failed: {ex.Message}"); return (null, HttpStatusCode.RequestTimeout); }
     }
 }

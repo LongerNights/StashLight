@@ -1,9 +1,9 @@
 using System.Diagnostics;
 using FrooxEngine;
 using FrooxEngine.Store;
-using InventorySearch.Core;
+using StashLight.Core;
 
-namespace InventorySearch;
+namespace StashLight;
 
 /// <summary>
 /// Walks the user's own inventory tree (RecordDirectory) on the thread pool. Links are NOT followed here;
@@ -52,7 +52,7 @@ internal static class PersonalIndexer
             catch (Exception ex)
             {
                 Interlocked.Increment(ref failures);
-                ResoniteModLoader.ResoniteMod.Warn($"[InventorySearch] load failed for '{dir.Path}': {ex.Message}");
+                ResoniteModLoader.ResoniteMod.Warn($"[StashLight] load failed for '{dir.Path}': {ex.Message}");
                 return;
             }
 

@@ -1,4 +1,4 @@
-namespace InventorySearch.Core;
+namespace StashLight.Core;
 
 public enum NavKey { Up, Down, Left, Right, PageUp, PageDown, Home, End }
 

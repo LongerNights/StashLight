@@ -2,14 +2,14 @@ using Elements.Core;
 using HarmonyLib;
 using ResoniteModLoader;
 
-namespace InventorySearch;
+namespace StashLight;
 
 /// <summary>Mod entry point (ResoniteModLoader mod running under MonkeyLoader's RML compat pack).</summary>
-public sealed class InventorySearchMod : ResoniteMod
+public sealed class StashLightMod : ResoniteMod
 {
     public const string VERSION = "0.6.2";
 
-    public override string Name => "InventorySearch";
+    public override string Name => "StashLight";
     public override string Author => "Winter";
     public override string Version => VERSION;
     public override string Link => "";
@@ -119,9 +119,9 @@ public sealed class InventorySearchMod : ResoniteMod
     public override void OnEngineInit()
     {
         Cfg = GetConfiguration();
-        Msg($"InventorySearch {VERSION} loaded");
+        Msg($"StashLight {VERSION} loaded");
         // Patch each class on its own: if one fails (say an engine method changed), the others still apply.
-        var harmony = new Harmony("Winter.InventorySearch");
+        var harmony = new Harmony("Winter.StashLight");
         foreach (var (type, what) in new[] { (typeof(Ui.DashPatches), "dash screen"), (typeof(ChangeHooks), "live index updates") })
         {
             try { harmony.CreateClassProcessor(type).Patch(); Msg($"patched: {what}"); }

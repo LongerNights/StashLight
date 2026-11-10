@@ -1,9 +1,9 @@
 using System.Diagnostics;
 using System.IO.Compression;
-using InventorySearch.Core;
+using StashLight.Core;
 using Xunit;
 
-namespace InventorySearch.Tests;
+namespace StashLight.Tests;
 
 public class IndexPartsTests
 {

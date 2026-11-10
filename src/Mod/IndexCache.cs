@@ -1,18 +1,31 @@
 using FrooxEngine;
-using InventorySearch.Core;
+using StashLight.Core;
 using ResoniteModLoader;
 
-namespace InventorySearch;
+namespace StashLight;
 
 /// <summary>
 /// Reads/writes the index cache next to the game's other local data:
-/// &lt;LocalDB.PermanentPath&gt;\InventorySearch\&lt;userId&gt;.index. It is only a cache: any problem means "rebuild".
+/// &lt;LocalDB.PermanentPath&gt;\StashLight\&lt;userId&gt;.index. It is only a cache: any problem means "rebuild".
 /// </summary>
 internal static class IndexCache
 {
     private static readonly object _io = new();
 
-    private static string Dir => Path.Combine(Engine.Current.LocalDB.PermanentPath, "InventorySearch");
+    private static string Dir
+    {
+        get
+        {
+            string root = Engine.Current.LocalDB.PermanentPath, dir = Path.Combine(root, "StashLight");
+            try   // the mod used to be called InventorySearch: keep its (expensive to rebuild) cache
+            {
+                string old = Path.Combine(root, "InventorySearch");
+                if (!Directory.Exists(dir) && Directory.Exists(old)) Directory.Move(old, dir);
+            }
+            catch { /* only a cache: a failed move just means a rebuild */ }
+            return dir;
+        }
+    }
 
     private static string FileFor(string userId)
     {
@@ -34,14 +47,14 @@ internal static class IndexCache
                 {
                     fs.Close();
                     try { File.Delete(path); } catch { /* it is only a cache */ }
-                    ResoniteMod.Warn("[InventorySearch] ignored an unreadable or outdated index cache; it will be rebuilt");
+                    ResoniteMod.Warn("[StashLight] ignored an unreadable or outdated index cache; it will be rebuilt");
                 }
                 return file;
             }
         }
         catch (Exception ex)
         {
-            ResoniteMod.Warn("[InventorySearch] could not read the index cache: " + ex.Message);
+            ResoniteMod.Warn("[StashLight] could not read the index cache: " + ex.Message);
             return null;
         }
     }
@@ -63,7 +76,7 @@ internal static class IndexCache
         }
         catch (Exception ex)
         {
-            ResoniteMod.Warn("[InventorySearch] could not save the index cache: " + ex.Message);
+            ResoniteMod.Warn("[StashLight] could not save the index cache: " + ex.Message);
             return -1;
         }
     }

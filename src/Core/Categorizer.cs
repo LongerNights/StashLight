@@ -1,4 +1,4 @@
-namespace InventorySearch.Core;
+namespace StashLight.Core;
 
 /// <summary>
 /// Maps a record's type + tags to a coarse category used by filter chips and type:.

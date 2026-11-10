@@ -2,7 +2,7 @@ using Elements.Core;
 using FrooxEngine;
 using FrooxEngine.UIX;
 
-namespace InventorySearch.Ui;
+namespace StashLight.Ui;
 
 /// <summary>
 /// Fixed type scale, borrowed from the Worlds tab overhaul (Discover) so both screens read as one family:
@@ -50,8 +50,8 @@ internal static class Theme
 /// </summary>
 internal static class UiMotion
 {
-    public static bool Enabled => InventorySearchMod.Get(InventorySearchMod.AnimationsKey, true);
-    public static float Speed => InventorySearchMod.Get(InventorySearchMod.AnimationSpeedKey, 1f);
+    public static bool Enabled => StashLightMod.Get(StashLightMod.AnimationsKey, true);
+    public static float Speed => StashLightMod.Get(StashLightMod.AnimationSpeedKey, 1f);
     public static float Seconds(float normalSeconds) => normalSeconds / MathF.Max(0.2f, Speed);
 
     /// <summary>Fades a colour field from transparent to <paramref name="target"/>.</summary>
@@ -59,7 +59,7 @@ internal static class UiMotion
     {
         if (!Enabled) return;
         try { color.TweenFromTo(target.SetA(0f), target, Seconds(normalSeconds), CurvePreset.SineOut); }
-        catch (Exception ex) { UniLog.Warning($"[InventorySearch] fade failed: {ex.GetType().Name}"); }
+        catch (Exception ex) { UniLog.Warning($"[StashLight] fade failed: {ex.GetType().Name}"); }
     }
 
     /// <summary>Slides a rect into place by tweening its anchors from <paramref name="from"/> (fractions of its parent) to where they are.</summary>
@@ -73,6 +73,6 @@ internal static class UiMotion
             rect.AnchorMin.TweenFromTo(min + from, min, s, curve);
             rect.AnchorMax.TweenFromTo(max + from, max, s, curve);
         }
-        catch (Exception ex) { UniLog.Warning($"[InventorySearch] slide failed: {ex.GetType().Name}"); }
+        catch (Exception ex) { UniLog.Warning($"[StashLight] slide failed: {ex.GetType().Name}"); }
     }
 }

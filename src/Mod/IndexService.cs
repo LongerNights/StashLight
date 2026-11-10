@@ -1,11 +1,11 @@
 using System.Diagnostics;
 using System.Text;
 using FrooxEngine;
-using InventorySearch.Core;
+using StashLight.Core;
 using ResoniteModLoader;
 using Record = FrooxEngine.Store.Record;
 
-namespace InventorySearch;
+namespace StashLight;
 
 /// <summary>
 /// Owns the live index. The index is assembled from independent parts (<see cref="IndexParts"/>): your inventory tree, the
@@ -35,14 +35,14 @@ internal static class IndexService
     public static void Start()
     {
         if (Interlocked.Exchange(ref _started, 1) == 1) return;
-        if (!InventorySearchMod.Get(InventorySearchMod.EnabledKey, true)) { Phase = "disabled"; return; }
+        if (!StashLightMod.Get(StashLightMod.EnabledKey, true)) { Phase = "disabled"; return; }
         _ = Task.Run(RunAsync);
     }
 
     private static void Log(string msg)
     {
         lock (_timeline) _timeline.AppendLine($"{DateTime.Now:HH:mm:ss.fff} {msg}");
-        ResoniteMod.Msg("[InventorySearch] " + msg);
+        ResoniteMod.Msg("[StashLight] " + msg);
     }
 
     public static string Timeline() { lock (_timeline) return _timeline.ToString(); }
@@ -55,7 +55,7 @@ internal static class IndexService
     /// <summary>Lets other diagnostics write into the same timeline/log.</summary>
     internal static void Note(string msg) => Log(msg);
 
-    private static int Concurrency => InventorySearchMod.Get(InventorySearchMod.LoadConcurrencyKey, 4);
+    private static int Concurrency => StashLightMod.Get(StashLightMod.LoadConcurrencyKey, 4);
 
     // ------------------------------------------------------------------ main loop
 
@@ -97,7 +97,7 @@ internal static class IndexService
         catch (Exception ex)
         {
             Phase = "failed";
-            ResoniteMod.Error("[InventorySearch] indexer crashed: " + ex);
+            ResoniteMod.Error("[StashLight] indexer crashed: " + ex);
         }
     }
 
@@ -111,8 +111,8 @@ internal static class IndexService
         _parts.Clear();
         RecordRegistry.Clear();
         Targets = Array.Empty<GroupInventories.Target>();
-        bool others = InventorySearchMod.Get(InventorySearchMod.IncludeCachedOtherOwnersKey, true);
-        bool refresh = InventorySearchMod.Get(InventorySearchMod.RefreshFromCloudKey, true);
+        bool others = StashLightMod.Get(StashLightMod.IncludeCachedOtherOwnersKey, true);
+        bool refresh = StashLightMod.Get(StashLightMod.RefreshFromCloudKey, true);
         Log($"building index for {me}");
 
         LocalDbProbe.Start();
@@ -126,7 +126,7 @@ internal static class IndexService
 
         // With the index already usable from the cache, there is no hurry: let the game finish its own start-up
         // (world assets, session list, contacts) before we touch the network or the engine's database.
-        int holdSeconds = InventorySearchMod.Get(InventorySearchMod.StartupRefreshDelaySecondsKey, 60);
+        int holdSeconds = StashLightMod.Get(StashLightMod.StartupRefreshDelaySecondsKey, 60);
         if (restored && holdSeconds > 0)
         {
             Phase = "ready";
@@ -148,7 +148,7 @@ internal static class IndexService
 
         // Phase 2 (optional): walk the inventory tree from the local cache (no network).
         // Off by default: measured 8.5 s for the same records the bulk DB read returns in ~1 s.
-        if (InventorySearchMod.Get(InventorySearchMod.WalkCacheFirstKey, false))
+        if (StashLightMod.Get(StashLightMod.WalkCacheFirstKey, false))
         try
         {
             Phase = "tree (cache)";
@@ -173,7 +173,7 @@ internal static class IndexService
 
     private static bool LoadDiskCache(string me)
     {
-        if (!InventorySearchMod.Get(InventorySearchMod.UseDiskCacheKey, true)) return false;
+        if (!StashLightMod.Get(StashLightMod.UseDiskCacheKey, true)) return false;
         var sw = Stopwatch.StartNew();
         var cache = IndexCache.TryLoad(me);
         if (cache == null) { Log("no usable disk cache (first run, or it was outdated); building from scratch"); return false; }
@@ -206,7 +206,7 @@ internal static class IndexService
         Phase = "tree (cloud refresh)";
         try
         {
-            var r = InventorySearchMod.Get(InventorySearchMod.UseEngineWalkerKey, false)
+            var r = StashLightMod.Get(StashLightMod.UseEngineWalkerKey, false)
                 ? await PersonalIndexer.WalkAsync(root, cloudRefresh: true, Concurrency, CancellationToken.None).ConfigureAwait(false)
                 : await CloudWalker.WalkAsync(Engine.Current, root.OwnerId, "Inventory", Concurrency, Source.Personal, CancellationToken.None).ConfigureAwait(false);
             if (IndexParts.LooksLikeAFailedRefresh(r.Entries.Count, _parts.TreeCount, r.Failures))
@@ -257,7 +257,7 @@ internal static class IndexService
         try
         {
             PersonalIndexer.WalkResult r;
-            if (t.IsLocal || InventorySearchMod.Get(InventorySearchMod.UseEngineWalkerKey, false))
+            if (t.IsLocal || StashLightMod.Get(StashLightMod.UseEngineWalkerKey, false))
             {
                 // Local Storage is a patched RecordDirectory (disk, no network); its Records are needed to spawn, so remember them.
                 var groupRoot = new RecordDirectory(t.OwnerId, "Inventory", engine);
@@ -285,7 +285,7 @@ internal static class IndexService
     /// <summary>Periodic background refresh while the game runs (RefreshMinutes setting; 0 turns it off).</summary>
     private static async Task MaybeRefreshAsync(Engine engine, RecordDirectory root)
     {
-        double minutes = InventorySearchMod.Get(InventorySearchMod.RefreshMinutesKey, 20);
+        double minutes = StashLightMod.Get(StashLightMod.RefreshMinutesKey, 20);
         if (minutes <= 0 || Phase != "ready") return;
         var now = DateTime.UtcNow;
         bool tree = now - _lastTreeRefreshUtc >= TimeSpan.FromMinutes(minutes);
@@ -306,7 +306,7 @@ internal static class IndexService
         var sw = Stopwatch.StartNew();
         var idx = _parts.Build();
         _index = idx;
-        try { Published?.Invoke(); } catch (Exception ex) { ResoniteMod.Warn("[InventorySearch] Published handler failed: " + ex.Message); }
+        try { Published?.Invoke(); } catch (Exception ex) { ResoniteMod.Warn("[StashLight] Published handler failed: " + ex.Message); }
         Log($"published index [{label}]: {idx.Count} entries ({idx.PersonalCount} personal, {idx.SharedCount} group/local) built in {sw.ElapsedMilliseconds} ms");
     }
 
@@ -323,7 +323,7 @@ internal static class IndexService
 
     private static void ScheduleSave(int seconds)
     {
-        if (!InventorySearchMod.Get(InventorySearchMod.UseDiskCacheKey, true)) return;
+        if (!StashLightMod.Get(StashLightMod.UseDiskCacheKey, true)) return;
         int v = Interlocked.Increment(ref _saveVersion);
         _ = Task.Run(async () =>
         {
@@ -335,7 +335,7 @@ internal static class IndexService
 
     private static Task SaveNowAsync()
     {
-        if (!InventorySearchMod.Get(InventorySearchMod.UseDiskCacheKey, true) || UserId == null) return Task.CompletedTask;
+        if (!StashLightMod.Get(StashLightMod.UseDiskCacheKey, true) || UserId == null) return Task.CompletedTask;
         return Task.Run(() =>
         {
             var sw = Stopwatch.StartNew();
@@ -369,7 +369,7 @@ internal static class IndexService
             if (rec.OwnerId == GroupInventories.LocalOwner) RecordRegistry.Add(rec);
             ScheduleRepublish(); ScheduleSave(20);
         }
-        catch (Exception ex) { ResoniteMod.Warn("[InventorySearch] could not index a new item: " + ex.Message); }
+        catch (Exception ex) { ResoniteMod.Warn("[StashLight] could not index a new item: " + ex.Message); }
     }
 
     public static void RecordRemoved(Record? rec)
@@ -379,7 +379,7 @@ internal static class IndexService
             if (rec == null || UserId == null) return;
             if (_parts.RemoveRecord(rec.OwnerId, rec.RecordId) > 0) { ScheduleRepublish(); ScheduleSave(20); }
         }
-        catch (Exception ex) { ResoniteMod.Warn("[InventorySearch] could not drop a deleted item: " + ex.Message); }
+        catch (Exception ex) { ResoniteMod.Warn("[StashLight] could not drop a deleted item: " + ex.Message); }
     }
 
     public static void FolderRemoved(RecordDirectory? dir)
@@ -393,6 +393,6 @@ internal static class IndexService
             if (!dir.IsLink && dir.OwnerId != null && dir.Path != null) n += _parts.RemoveFolder(dir.OwnerId, dir.Path);   // everything inside
             if (n > 0) { ScheduleRepublish(); ScheduleSave(20); }
         }
-        catch (Exception ex) { ResoniteMod.Warn("[InventorySearch] could not drop a deleted folder: " + ex.Message); }
+        catch (Exception ex) { ResoniteMod.Warn("[StashLight] could not drop a deleted folder: " + ex.Message); }
     }
 }

@@ -1,7 +1,7 @@
 using FrooxEngine;
 using ResoniteModLoader;
 
-namespace InventorySearch;
+namespace StashLight;
 
 /// <summary>
 /// Which extra inventories can be searched besides your own: the groups you belong to, plus Local Storage when
@@ -34,7 +34,7 @@ internal static class GroupInventories
                         list.Add(new Target(m.GroupId, string.IsNullOrWhiteSpace(m.GroupName) ? m.GroupId : m.GroupName, false));
             list.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.CurrentCultureIgnoreCase));
         }
-        catch (Exception ex) { ResoniteMod.Warn("[InventorySearch] could not read group memberships: " + ex.Message); }
+        catch (Exception ex) { ResoniteMod.Warn("[StashLight] could not read group memberships: " + ex.Message); }
         if (LocalStorageInstalled()) list.Add(new Target(LocalOwner, "Local storage", true));
         return list;
     }

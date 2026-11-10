@@ -1,13 +1,13 @@
-# InventorySearch
+# StashLight
 
 ## Goal
 
-Build a **Resonite mod** for searching the user's inventory — a faster, better-designed replacement for **RedX**, an existing in-game facet (on the dash) that does inventory search. RedX has always been slow and recently broke.
+Build a **Resonite mod** for searching the user's inventory: a fast, well-designed Search tab on the dash, backed by a local in-memory index.
 
 Priorities:
 1. **Speed** — fast search over the inventory (index/cache records rather than re-walking the cloud inventory on every query).
-2. **UI** — a cleaner, more usable interface than RedX.
-3. **Works again** — RedX is currently broken; the mod must not depend on its internals.
+2. **UI** — a clean, usable interface (thumbnail grid, filters, details pane).
+3. **Self-contained** — no external servers; everything is searched in-process.
 
 **The mod spec is in [SPEC.md](SPEC.md)** — architecture, UI, settings, milestones, and open questions. Keep it updated as decisions are made.
 
@@ -15,18 +15,10 @@ Priorities:
 
 Resonite is controlled live through McpLink (`mcp__mcplink__*` tools). Read [CLAUDE-MCPLINK.md](CLAUDE-MCPLINK.md) before using it — it covers addressing, safety rules (read-only on `userspace`, confirm before mutating the user's creations), and how to inspect worlds, ProtoFlux, and UI.
 
-## What RedX is (inspected via MCP, userspace, read-only)
+## Design principles
 
-- Lives at `Root/Dash/.../Render/ScreensRoot/Screens/CustomScreen [RedX]` (userspace slot `ID27EA900`; RefIDs change per session). Also a home-screen facet `RedX v2.3`.
-- It is a pure ProtoFlux/UIX "custom screen" with facets: Main (`RedXFacet v2`), Filter, Search, Paging, Active (selected-item info). Logic slots are under `RedXFacet v2/LgX`: `UrlBuilder`, `DoRequest`, `TotalItemsHandler`, `IsSearchingHandler`, `ActiveHandler`, `SpawnRecord`.
-- **It does not search the local/cloud inventory directly.** It queries an external third-party server: `https://redx.cloudns.org/search.animx?q=<term>&from=0&size=128&type=...` (types: directory, common_avatar, model, facet, texture, ...). The response is an `.animx` (animation asset) used as a data transport, which `DoRequest` loads and samples with ProtoFlux, 128 results per page.
-- Search term comes from dynvar `RedX.SearchTerm`; each keystroke change re-triggers `UrlBuilder` (debounced) → `DoRequest`.
-- Status check (2026-11-09): host resolves but `search.animx` returns HTTP 404 — the backend is likely dead/moved, which explains the breakage. Slowness is inherent: network round-trip + ProtoFlux parsing of 128 results per page.
-
-## Implications for the mod
-
-- Don't depend on `redx.cloudns.org`. Search the user's own inventory in-process (index records locally, query the index in memory) — that fixes both the breakage and the speed.
-- Replace the ProtoFlux data path with C# (mod) and build a cleaner UIX panel.
+- Search the user's own inventory in-process: index records locally and query the index in memory. No third-party search server.
+- Do the data work in C# (the mod) and present it in a purpose-built UIX panel.
 
 ## Inventory API findings (explored via McpLink, 2026-11-09)
 
@@ -61,32 +53,32 @@ Resonite is controlled live through McpLink (`mcp__mcplink__*` tools). Read [CLA
 ## Code layout & build (M1)
 
 - `src/Core/` — engine-free: `IndexEntry`, `SearchIndex` (immutable snapshot), `Query` parser, `QueryEngine` (ranking, filters, fuzzy, top-K), `Categorizer`, `Text`. Compiled into both the mod and the tests.
-- `src/Mod/` — engine side: `InventorySearchMod` (RML mod entry + config), `IndexService` (waits for login, builds index in phases), `LocalDbBootstrap` (reads `Engine.LocalDB`), `PersonalIndexer` (RecordDirectory walk), `RecordMapper`, `IndexCache` (disk cache I/O), `ChangeHooks` (live add/delete updates), `GroupInventories` (groups + optional Local Storage), `CloudWalker` (read-only direct listings), `LinkCrawler` (M4: opt-in crawl of your links' folders), `LocalDbProbe` (logs LocalDB queue waits), `RecordRegistry`, `Api` (diagnostic static methods). `src/Core/` also has `IndexParts` (index assembled from parts incl. per-link crawled content, change routing), `IndexCacheFile` (cache format), `LinkCrawlPlan` (`CrawlPlanner`, what to crawl), `MinIntervalGate` (rate limit).
+- `src/Mod/` — engine side: `StashLightMod` (RML mod entry + config), `IndexService` (waits for login, builds index in phases), `LocalDbBootstrap` (reads `Engine.LocalDB`), `PersonalIndexer` (RecordDirectory walk), `RecordMapper`, `IndexCache` (disk cache I/O), `ChangeHooks` (live add/delete updates), `GroupInventories` (groups + optional Local Storage), `CloudWalker` (read-only direct listings), `LinkCrawler` (M4: opt-in crawl of your links' folders), `LocalDbProbe` (logs LocalDB queue waits), `RecordRegistry`, `Api` (diagnostic static methods). `src/Core/` also has `IndexParts` (index assembled from parts incl. per-link crawled content, change routing), `IndexCacheFile` (cache format), `LinkCrawlPlan` (`CrawlPlanner`, what to crawl), `MinIntervalGate` (rate limit).
 - `tests/` — xunit tests for Core (`cd tests; dotnet test`). The mod builds against the game's own `Libraries\ResoniteModLoader.dll` (via `GameDir`); `lib/` is git-ignored scratch.
 - Build: `cd src; dotnet build -c Release` (add `-p:DeployToGame=true` to copy into `rml_mods`; `-p:GameDir=...` if Resonite moved). Restart Resonite to load a new DLL (no hot reload for `rml_mods`).
 - `src/Mod/Ui/` (M2) — `DashPatches` (Harmony hooks on `UserspaceScreensManager`), `SearchScreen` (layout, state, debounced queries, details pane), `ResultGrid` (virtualized grid: small recycled cell pool driven by `ScrollRect.NormalizedPosition`; y=0 is top), `ItemActions` (spawn/equip/open world/open folder/copy link, mirroring `InventoryBrowser`), `UiKit` (helpers).
-- Diagnostics without UI: inspect via McpLink `call_method` with `typeName: "InventorySearch.Api"`, methods `Status()`, `Search(query, limit)`, `Bench(query, runs)` (all static), and via the `logs` tool (`[InventorySearch]` lines).
+- Diagnostics without UI: inspect via McpLink `call_method` with `typeName: "StashLight.Api"`, methods `Status()`, `Search(query, limit)`, `Bench(query, runs)` (all static), and via the `logs` tool (`[StashLight]` lines).
 
 ## Running the game (permissions and procedure)
 
 - The user has **explicitly allowed** closing, deploying and launching Resonite as needed for testing. Never kill it: close gracefully (`Renderite.Renderer` owns the window; `CloseMainWindow()`), wait for all of `Resonite`, `Renderite.Host`, `Renderite.Renderer` to exit.
 - **Launch in desktop mode: `Start-Process "<Resonite dir>\Resonite.exe" -ArgumentList '-Screen'`** (works while Steam is running). Do NOT use `steam://rungameid/...` or `steam://run/...`: Resonite has several launch options, so Steam waits on a chooser dialog and never starts the game. `-Screen` = `HeadOutputDevice.Screen` in `LaunchOptions.cs`.
 - One command does it all: `tools\redeploy-resonite.ps1` (adapted from the Worlds tab project): close, build with `DeployToGame`, relaunch with `-Screen`.
-- Settings live in `MonkeyLoader\Configs\InventorySearch.json`; the game rewrites it at shutdown, so edit it only while the game is closed, and restore it after any experiment.
+- Settings live in `MonkeyLoader\Configs\StashLight.json`; the game rewrites it at shutdown, so edit it only while the game is closed, and restore it after any experiment.
 
 ## UIX gotchas (learned the hard way)
 
 - **Never pass a delegate to `UIBuilder.Button(text, action)`** (or any API that assigns a `SyncDelegate`): it throws `Assigning method declared on non-data model type…` for plain C# classes/lambdas. Create the button without an action and use `button.LocalPressed += handler` (local-only event) — see `UiKit.TextButton`.
-- Mod UI code runs inside engine callbacks; wrap each UI section in try/catch (`SearchScreen.Guard`) so a bug is logged by name instead of aborting everything. Errors show in `MonkeyLoader/Logs/MonkeyLog_*.log` (grep `[InventorySearch]`).
+- Mod UI code runs inside engine callbacks; wrap each UI section in try/catch (`SearchScreen.Guard`) so a bug is logged by name instead of aborting everything. Errors show in `MonkeyLoader/Logs/MonkeyLog_*.log` (grep `[StashLight]`).
 - **Never use `Elements.Core.MathX.Clamp` for ints**: `MathX.Clamp(5, 0, 0)` returns **-1** (verified by probe). It caused the "empty tab doesn't change the view" bug (negative cell-pool index → `ArgumentOutOfRangeException` inside `Refresh`, after the status text had already updated). Use `Math.Clamp`/`GridMath` (Core, unit-tested with a fuzz test).
 - **`UIBuilder.Panel(...)` / `Image(...)` create a CHILD slot** under the rect you give them. If code later destroys "all children" of that rect (e.g. rebuilding a menu's rows), it deletes the background too. Put backgrounds in their own `Bg` child and skip it when clearing (`SearchScreen.RebuildScopeMenu`).
 - **Text field placeholder:** `Text.NullContent` is drawn only while `Content` is **null**; `TextField("")` starts as `""`, so set `tf.TargetString = null` and `Editor.FinishHandling = NullOnWhitespace` so an emptied field returns to null. Enums for text alignment are in `Elements.Assets` (`using Elements.Assets;`).
 - **`RecordDirectory.EnsureFullyLoaded()` is not read-only**: it makes the engine write each loaded record into LocalDB (lookup + update per record through LiteDB's single queue, shared with asset lookups). Don't use it to bulk-walk inventories; use `CloudWalker` (direct `Cloud.Records.GetRecords`). Only Local Storage (a patched disk read) still goes through `RecordDirectory`. `LocalDbProbe` logs LocalDB queue waits for the first 4 minutes.
 - Exceptions inside `world.RunSynchronously` actions don't show in the MonkeyLoader log — read the engine log via McpLink `logs` (`level: error`) when something silently fails.
-- The running game locks `rml_mods/InventorySearch.dll`: every code change needs close → deploy → relaunch.
+- The running game locks `rml_mods/StashLight.dll`: every code change needs close → deploy → relaunch.
 
 ## Status & next steps
 
 - M1 (index + query engine) done and measured in-game. M2 (dash screen) is built and unit-tested at the Core level, but **the UI has not yet been run in-game** — first launch with 0.2.0 is its first test (see SPEC.md §9 for the checklist).
-- Deploying: the running game locks `rml_mods/InventorySearch.dll`; close Resonite, then `cd src; dotnet build -c Release -p:DeployToGame=true`.
+- Deploying: the running game locks `rml_mods/StashLight.dll`; close Resonite, then `cd src; dotnet build -c Release -p:DeployToGame=true`.
 - M1–M4 are implemented and verified in game: index/query, dash screen with groups + Local Storage, disk cache + live updates + background refresh, and the opt-in link crawler (SPEC §9d, §9g). M5 (0.6.x: list view, keyboard navigation, Links panel with per-link switches and forced re-crawl, parallel scoring) is done; see SPEC §9h. `src/Mod/Ui/LinksPanel.cs` is the Links panel; `Api` has `Links/Recrawl/OpenLinksPanel/SelectIndex` diagnostics.

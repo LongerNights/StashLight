@@ -1,9 +1,9 @@
 using System.Diagnostics;
 using FrooxEngine;
 using FrooxEngine.Store;
-using InventorySearch.Core;
+using StashLight.Core;
 
-namespace InventorySearch;
+namespace StashLight;
 
 /// <summary>
 /// Reads records straight out of the engine's local LiteDB cache (Engine.LocalDB): zero network.

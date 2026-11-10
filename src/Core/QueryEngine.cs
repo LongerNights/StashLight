@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
-namespace InventorySearch.Core;
+namespace StashLight.Core;
 
 public enum SortMode { Relevance, Name, DateModified, Type }
 

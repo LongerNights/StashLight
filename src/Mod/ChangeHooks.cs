@@ -2,7 +2,7 @@ using FrooxEngine;
 using HarmonyLib;
 using Record = FrooxEngine.Store.Record;
 
-namespace InventorySearch;
+namespace StashLight;
 
 /// <summary>
 /// Keeps the index current while the game runs: postfixes on the RecordDirectory mutators the engine (and mods such as

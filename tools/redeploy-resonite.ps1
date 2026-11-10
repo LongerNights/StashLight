@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Closes Resonite, builds and installs InventorySearch into rml_mods, and starts Resonite again in desktop mode.
+  Closes Resonite, builds and installs StashLight into rml_mods, and starts Resonite again in desktop mode.
 
 .DESCRIPTION
   Adapted from the Worlds tab project's tools\redeploy-resonite.ps1 (same procedure). Resonite locks the mod DLL while it

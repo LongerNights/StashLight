@@ -2,7 +2,7 @@ using Elements.Core;
 using FrooxEngine;
 using FrooxEngine.UIX;
 
-namespace InventorySearch.Ui;
+namespace StashLight.Ui;
 
 /// <summary>Small helpers over UIX so screen code reads as layout, not plumbing. World thread only.</summary>
 internal static class UiKit

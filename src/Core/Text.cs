@@ -1,7 +1,7 @@
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace InventorySearch.Core;
+namespace StashLight.Core;
 
 public static partial class Text
 {

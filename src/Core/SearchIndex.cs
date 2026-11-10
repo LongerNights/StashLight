@@ -1,4 +1,4 @@
-namespace InventorySearch.Core;
+namespace StashLight.Core;
 
 /// <summary>Immutable snapshot: entries plus precomputed lowercase/normalized search fields.</summary>
 public sealed class SearchIndex

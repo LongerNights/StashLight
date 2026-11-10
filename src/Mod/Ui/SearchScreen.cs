@@ -2,12 +2,12 @@ using Elements.Assets;
 using Elements.Core;
 using FrooxEngine;
 using FrooxEngine.UIX;
-using InventorySearch.Core;
+using StashLight.Core;
 using Renderite.Shared;
 using ResoniteModLoader;
 using UText = FrooxEngine.UIX.Text;
 
-namespace InventorySearch.Ui;
+namespace StashLight.Ui;
 
 /// <summary>
 /// The "Search" dash screen. Layout (1920x1080 canvas): header (search box, scope, sort) + category chips,
@@ -27,9 +27,9 @@ internal sealed class SearchScreen
             var dash = manager.Slot.GetComponentInParents<RadiantDash>(null, true, false);
             if (dash == null) return;
             _instance = new SearchScreen(dash);
-            ResoniteMod.Msg("[InventorySearch] Search screen created");
+            ResoniteMod.Msg("[StashLight] Search screen created");
         }
-        catch (Exception ex) { ResoniteMod.Error("[InventorySearch] failed to build Search screen: " + ex); }
+        catch (Exception ex) { ResoniteMod.Error("[StashLight] failed to build Search screen: " + ex); }
     }
 
     private static readonly (string label, string? cat)[] Chips =
@@ -90,7 +90,7 @@ internal sealed class SearchScreen
     {
         var s = _instance;
         if (s == null || s._screen.IsRemoved) return "no Search screen";
-        s._world.RunSynchronously(() => { try { act(s); } catch (Exception ex) { ResoniteMod.Warn("[InventorySearch] diagnostic failed: " + ex); } });
+        s._world.RunSynchronously(() => { try { act(s); } catch (Exception ex) { ResoniteMod.Warn("[StashLight] diagnostic failed: " + ex); } });
         return "requested";
     }
 
@@ -104,10 +104,10 @@ internal sealed class SearchScreen
             for (int i = 0; i < 600 && !screen.IsRemoved; i++)
             {
                 long? order = OrderRightOfInventory(dash, screen);
-                if (order != null) { screen.Slot.OrderOffset = order.Value; ResoniteMod.Msg($"[InventorySearch] Search tab placed next to Inventory (order {order})"); return; }
+                if (order != null) { screen.Slot.OrderOffset = order.Value; ResoniteMod.Msg($"[StashLight] Search tab placed next to Inventory (order {order})"); return; }
                 await default(NextUpdate);
             }
-            ResoniteMod.Warn("[InventorySearch] no Inventory tab found; Search tab stays at the end");
+            ResoniteMod.Warn("[StashLight] no Inventory tab found; Search tab stays at the end");
         });
     }
 
@@ -129,7 +129,7 @@ internal sealed class SearchScreen
             }
             return next == long.MaxValue ? inv + 10 : inv + Math.Max(1, (next - inv) / 2);
         }
-        catch (Exception ex) { ResoniteMod.Warn("[InventorySearch] could not place the Search tab next to Inventory: " + ex.Message); return null; }
+        catch (Exception ex) { ResoniteMod.Warn("[StashLight] could not place the Search tab next to Inventory: " + ex.Message); return null; }
     }
 
     private SearchScreen(RadiantDash dash)
@@ -210,7 +210,7 @@ internal sealed class SearchScreen
     private static void Guard(string section, Action build)
     {
         try { build(); }
-        catch (Exception ex) { ResoniteMod.Error($"[InventorySearch] UI section '{section}' failed: {ex}"); }
+        catch (Exception ex) { ResoniteMod.Error($"[StashLight] UI section '{section}' failed: {ex}"); }
     }
 
     private void BuildHeader(RectTransform root)
@@ -294,7 +294,7 @@ internal sealed class SearchScreen
     private void BuildGrid(RectTransform root)
     {
         var gridArea = UiKit.Rect(root, "Grid", new float2(0, 0), new float2(0.70f, 1), new float2(24, 60), new float2(-8, -190));
-        var grid = new ResultGrid(gridArea, InventorySearchMod.Get(InventorySearchMod.ListViewKey, false));
+        var grid = new ResultGrid(gridArea, StashLightMod.Get(StashLightMod.ListViewKey, false));
         grid.Clicked += OnCellClicked;
         _grid = grid;
         RefreshViewButton();           // the header is built before the grid, so label the View button now
@@ -450,7 +450,7 @@ internal sealed class SearchScreen
                     Apply(res, status);
                 });
             }
-            catch (Exception ex) { ResoniteMod.Warn("[InventorySearch] query failed: " + ex.Message); }
+            catch (Exception ex) { ResoniteMod.Warn("[StashLight] query failed: " + ex.Message); }
         });
     }
 
@@ -477,7 +477,7 @@ internal sealed class SearchScreen
 
         bool reset = _resetScrollNext; _resetScrollNext = false;
         try { _grid?.SetResults(res.Hits, reset); }
-        catch (Exception ex) { ResoniteMod.Error("[InventorySearch] updating the result grid failed: " + ex); }
+        catch (Exception ex) { ResoniteMod.Error("[StashLight] updating the result grid failed: " + ex); }
     }
 
     // ---------------------------------------------------------------- view toggle (grid / list)
@@ -486,8 +486,8 @@ internal sealed class SearchScreen
     {
         if (_grid == null) return;
         bool list = !_grid.ListMode;
-        try { InventorySearchMod.Cfg?.Set(InventorySearchMod.ListViewKey, list); }
-        catch (Exception ex) { ResoniteMod.Warn("[InventorySearch] could not save the View setting: " + ex.Message); }
+        try { StashLightMod.Cfg?.Set(StashLightMod.ListViewKey, list); }
+        catch (Exception ex) { ResoniteMod.Warn("[StashLight] could not save the View setting: " + ex.Message); }
         _grid.SetListMode(list);
         RefreshViewButton();
     }
@@ -521,7 +521,7 @@ internal sealed class SearchScreen
                 try { PollKeys(); }
                 catch (Exception ex)
                 {
-                    if (!_keyboardWarned) { _keyboardWarned = true; ResoniteMod.Warn("[InventorySearch] keyboard navigation error: " + ex.Message); }
+                    if (!_keyboardWarned) { _keyboardWarned = true; ResoniteMod.Warn("[StashLight] keyboard navigation error: " + ex.Message); }
                 }
             }
         });
@@ -574,13 +574,13 @@ internal sealed class SearchScreen
 
     // ---------------------------------------------------------------- linked toggle
 
-    private static bool IncludeLinked => InventorySearchMod.Get(InventorySearchMod.IncludeLinkedKey, false);
+    private static bool IncludeLinked => StashLightMod.Get(StashLightMod.IncludeLinkedKey, false);
 
     private void ToggleLinked()
     {
         bool now = !IncludeLinked;
-        try { InventorySearchMod.Cfg?.Set(InventorySearchMod.IncludeLinkedKey, now); }
-        catch (Exception ex) { ResoniteMod.Warn("[InventorySearch] could not save the Linked setting: " + ex.Message); }
+        try { StashLightMod.Cfg?.Set(StashLightMod.IncludeLinkedKey, now); }
+        catch (Exception ex) { ResoniteMod.Warn("[StashLight] could not save the Linked setting: " + ex.Message); }
         RefreshLinkedButton();
         if (now) LinkCrawler.Wake(); else LinkCrawler.Cancel();     // turning it on starts crawling; off stops it
         ScheduleQuery(resetScroll: true);

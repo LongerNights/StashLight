@@ -1,7 +1,7 @@
 using System.IO.Compression;
 using System.Text.Json;
 
-namespace InventorySearch.Core;
+namespace StashLight.Core;
 
 /// <summary>
 /// The on-disk index cache: versioned JSON, Brotli-compressed. It is only a cache, so anything unexpected

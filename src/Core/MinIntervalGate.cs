@@ -1,4 +1,4 @@
-namespace InventorySearch.Core;
+namespace StashLight.Core;
 
 /// <summary>
 /// Keeps requests at most <c>perSecond</c> per second across any number of workers: every caller reserves the next free time

@@ -1,4 +1,4 @@
-namespace InventorySearch.Core;
+namespace StashLight.Core;
 
 /// <summary>Text and setting edits behind the Links panel. Pure, so it is unit tested.</summary>
 public static class LinkRows

@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace InventorySearch.Core;
+namespace StashLight.Core;
 
 public sealed class Query
 {

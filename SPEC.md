@@ -1,17 +1,17 @@
-# InventorySearch — Mod Spec
+# StashLight — Mod Spec
 
 Status: draft v0.2 (2026-11-09). Engine APIs were verified against decompiled game build `2026.11.6.1136`, using FrooxEngine, FrooxEngine.Store and SkyFrost.Base, and against installed mods that use the same APIs. Background and measurements: [CLAUDE.md](CLAUDE.md).
 
 ## 1. Summary
 
-A Resonite mod that replaces the **RedX** dash facet with a fast, local inventory search. RedX sends every query to a third-party server (`redx.cloudns.org`), which now returns 404. It parses results in ProtoFlux, 128 per page. InventorySearch indexes the user's inventory **inside the game process**, searches it in memory, and shows results in a purpose-built dash screen.
+A Resonite mod that adds a fast, local inventory search to the dash. StashLight indexes the user's inventory **inside the game process**, searches it in memory, and shows results in a purpose-built dash screen.
 
 ## 2. Goals / non-goals
 
 **Goals**
 - G1. Search the user's own inventory instantly. No external server.
 - G2. Optionally search content reachable through **links**, meaning other users' and groups' folders linked from the inventory, without hurting game performance.
-- G3. A clearly better UI than RedX: type-as-you-search, thumbnails, filters, a details pane, one-click spawn.
+- G3. A clear, usable UI: type-as-you-search, thumbnails, filters, a details pane, one-click spawn.
 - G4. Never hitch or crash the game. Userspace crashes kill Resonite.
 
 **Non-goals (v1)**
@@ -89,8 +89,8 @@ All of these are confirmed in decompiled source unless marked *measured*.
   - `0Harmony.dll` (`rml_libs/`)
   - `FrooxEngine.dll`, `FrooxEngine.Store.dll`, `SkyFrost.Base.dll`, `SkyFrost.Base.Models.dll`, `Elements.Core.dll` and `Elements.Assets.dll` from the game folder, with `Private=false`
 
-  Output `InventorySearch.dll` goes to `rml_mods/`.
-- API: `class InventorySearch : ResoniteMod` with `Name`/`Author`/`Version`/`Link` and `OnEngineInit()` (`new Harmony(id).PatchAll()`). Config uses `ModConfigurationKey<T>` (the same pattern as BetterInventoryBrowser). ResoniteModSettings already provides a settings UI for RML config keys.
+  Output `StashLight.dll` goes to `rml_mods/`.
+- API: `class StashLight : ResoniteMod` with `Name`/`Author`/`Version`/`Link` and `OnEngineInit()` (`new Harmony(id).PatchAll()`). Config uses `ModConfigurationKey<T>` (the same pattern as BetterInventoryBrowser). ResoniteModSettings already provides a settings UI for RML config keys.
 
 ### 3.9 Measurements
 - Personal inventory: 136 folders, 1,889 records (1,738 objects, 151 links). All folders were already locally cached.
@@ -113,14 +113,14 @@ Findings:
 - The 10 ms target at 100k entries is **not yet met** (11–21 ms) but real indexes are 5–20k entries. Next lever if needed: parallel scoring across cores.
 
 ### 3.10 Prior art (installed)
-- **SimpleInventorySearch** (art0007i): filters only the *currently open* folder's UI slots by name. Not a real search.
+- **SimpleStashLight** (art0007i): filters only the *currently open* folder's UI slots by name. Not a real search.
 - **BetterInventoryBrowser**: pinned and recent folders, sorting, and name filtering of the current folder.
 - Neither one searches across folders, so there is no overlap. Our "Open folder" action should coexist with both: don't patch `BrowserDialog`/`InventoryBrowser` UI building.
 
 ## 4. Architecture
 
 ```
-┌──────────────── InventorySearch mod (C#, Harmony) ────────────────┐
+┌──────────────── StashLight mod (C#, Harmony) ────────────────┐
 │                                                                   │
 │  LocalDbBootstrap ─┐                                              │
 │  PersonalIndexer ──┼──► SearchIndex ◄──── QueryEngine ◄──── UI    │
@@ -171,7 +171,7 @@ Personal index target: **< 2 s** warm, with no frame-time impact since it runs o
 - Results are merged into the index in batches, at most once every 2 s. Unresolvable targets are listed in settings and retried at most once a day.
 
 ### 4.5 IndexCache
-- Location: `Path.Combine(Engine.Current.DataPath, "InventorySearch", $"index-{userId}.bin")`.
+- Location: `Path.Combine(Engine.Current.DataPath, "StashLight", $"index-{userId}.bin")`.
 - Format: a versioned, compressed format (System.Text.Json + Brotli is fine for about 100k entries). It holds entries, crawl state and per-folder timestamps.
 - If the file is corrupt or from an old version, delete it and rebuild.
 
@@ -244,7 +244,7 @@ All actions use the verified engine paths in 3.7. **Copy link** copies `resrec:/
 | `ScreenOrderOffset` | 200 | Dash button position |
 
 ## 7. Robustness
-- Every patch and callback is wrapped in try/catch and logs with an `[InventorySearch]` prefix. A failure disables that feature, never the game.
+- Every patch and callback is wrapped in try/catch and logs with an `[StashLight]` prefix. A failure disables that feature, never the game.
 - No synchronous network or disk I/O on any world thread.
 - Offline: search the cache and show an "offline — cached results" note.
 - Use one cache file per user ID. Rebuild when the logged-in user changes.
@@ -264,7 +264,7 @@ All actions use the verified engine paths in 3.7. **Copy link** copies `resrec:/
    *Status: done and verified in-game (build 0.1.0); tuned build 0.1.1 built, awaiting deploy. Remaining M1 item: persist nothing yet (cache is M3).*
 2. **M2 – UI:** Search dash screen, search box, virtualized grid, details pane and actions. **Group exact duplicates** (owner + path + name) into one result with a ×N badge.
    *Status: 0.2.1 running in-game. Verified via McpLink (read-only) after launch: one Search screen, `persistent=false`, all sections built, no errors; first query ran (status "3,918 results (5,312 items) · 9.9 ms"), chips show live counts, 30-cell pool fully bound with names/subtitles/badges, 21/21 cells with a thumbnail URL had the asset loaded. User screenshots then confirmed: scrolling/recycling, thumbnails, ×N badges, chips, selection + details pane. Visual issues found and fixed in 0.2.2: name/path text overlapping (now shrink-to-fit + tail-ellipsis paths), missing search hint (prompt must be `Text.NullContent`, not a locale key), Search tab reused the Inventory icon (now the search icon), opaque selection wash (now subtle tint + accent bar), tags clipped in details. 0.2.2 verified via McpLink after launch: no errors, one non-persistent screen, search hint set, typing works (field 'kita' → "32 results (336 items) · 6.2 ms"), idle frame time 5–9 ms (a transient 22 ms spike right after a query; FPS during scrolling not yet measured). Still unverified: spawn/equip/open-folder/copy-link results, scope/sort buttons, how the 0.2.2 visual fixes look. (0.2.0 failed at first button: synced-delegate gotcha, see CLAUDE.md.)* Implemented: `Search` dash screen (non-persistent, hooks as 3.6); debounced type-as-you-search (60 ms, off-thread, stale results dropped); category chips with live per-category counts; scope (Everything/Mine/Linked) and sort (Relevance/Name/Newest) toggles; virtualized 5-column thumbnail grid (cell pool rebinds on scroll, lazy thumbnails); duplicate grouping with ×N badge; details pane; actions Spawn, Equip avatar, Open world, Open folder, Copy link; click a selected item again to spawn it (or open it, for folders). Not implemented: list view and keyboard navigation (M5).
-   **First in-game checklist:** (a) a "Search" button appears on the dash and the screen opens; (b) typing filters live and the status bar shows timings; (c) scrolling a large result set (e.g. empty query) is smooth and rows never go blank or overlap; (d) thumbnails load and recycle correctly; (e) chips and sort/scope toggles work; (f) Spawn / Equip / Open world / Open folder / Copy link behave like the stock inventory; (g) `rml_mods` log shows no `[InventorySearch]` errors; (h) after a restart exactly one Search screen exists and the cloud `Private/RadiantDash/Screens` workspace has not saved a copy.
+   **First in-game checklist:** (a) a "Search" button appears on the dash and the screen opens; (b) typing filters live and the status bar shows timings; (c) scrolling a large result set (e.g. empty query) is smooth and rows never go blank or overlap; (d) thumbnails load and recycle correctly; (e) chips and sort/scope toggles work; (f) Spawn / Equip / Open world / Open folder / Copy link behave like the stock inventory; (g) `rml_mods` log shows no `[StashLight]` errors; (h) after a restart exactly one Search screen exists and the cloud `Private/RadiantDash/Screens` workspace has not saved a copy.
 3. **M3 – Cache and change hooks.** *Status: implemented in 0.4.0 (see 9d); Core unit-tested, in-game verification pending.*
 4. **M4 – LinkCrawler:** *Status: implemented in 0.5.0/0.5.1 and verified in game (see 9g).* Opt-in via the Linked toggle; direct listings only; rate-limited; incremental and resumable; per-link switch-off via the `DisabledLinks` setting.
 5. **M5 – Polish:** list view, keyboard navigation, filter chips with counts, settings.
@@ -285,7 +285,7 @@ All actions use the verified engine paths in 3.7. **Copy link** copies `resrec:/
 ## 9d. M3: disk cache, live updates, background refresh (0.4.0)
 
 - **Parts:** the index is assembled from independent parts (`Core/IndexParts.cs`, thread-safe, unit-tested): your inventory tree, the engine's cached-records DB, and one part per group / Local Storage owner. A refresh replaces only its own part.
-- **Disk cache** (`Core/IndexCacheFile.cs`, `Mod/IndexCache.cs`): `<LocalDB.PermanentPath>\InventorySearch\<userId>.index`, versioned JSON + Brotli, written atomically (temp file then replace). Saved after each full build, after background refreshes, and ~20 s after the last live change. At login it is restored *first* (the scope menu's groups too), so everything including group content is searchable immediately; the live sources then refresh their parts. Anything unexpected (corrupt, other user, other format version) is deleted and rebuilt. If the Local Storage mod was uninstalled since the cache was written, its items are dropped; groups you left are dropped once memberships load. Setting: `UseDiskCache` (default on).
+- **Disk cache** (`Core/IndexCacheFile.cs`, `Mod/IndexCache.cs`): `<LocalDB.PermanentPath>\StashLight\<userId>.index`, versioned JSON + Brotli, written atomically (temp file then replace). Saved after each full build, after background refreshes, and ~20 s after the last live change. At login it is restored *first* (the scope menu's groups too), so everything including group content is searchable immediately; the live sources then refresh their parts. Anything unexpected (corrupt, other user, other format version) is deleted and rebuilt. If the Local Storage mod was uninstalled since the cache was written, its items are dropped; groups you left are dropped once memberships load. Setting: `UseDiskCache` (default on).
 - **Measured (0.4.0 first launch):** nothing cached → built from scratch in 21.6 s → cache saved: 10,385 entries, 4.3 MB, 285 ms. Loading that real file takes 320–450 ms (+40–70 ms to build the index). The size was avoidable: serializing straight into the `BrotliStream` made the serializer flush it every buffer and wrecked the ratio (4.3 MB vs 1.6 MB for the same JSON at `Optimal`); the record-DB part also repeated ~4,000 items already stored under the tree/groups, and each entry stored its computed `Uri`. 0.4.1 serializes to bytes then compresses in one write at `Optimal`, drops duplicate DB entries on save, and no longer stores `Uri` (format version unchanged: old files still load). Also found: `SearchIndex` de-duplicated owner ids case-sensitively while everything else compared them case-insensitively; now consistent.
 - **Measured (0.4.1 second launch — the restore test):** the old 4.3 MB cache restored 6,360 entries (2,005 of them group/local) **about 1 s after the build started** (982 ms including first-use JIT) versus ~21 s before for the group content to appear; live refreshes then ran as normal (ready in 21.6 s) with no errors and rewrote the cache at **1,064 KB in 178 ms** (was 4,335 KB). Reading the new file: 190–250 ms (was 320–450 ms); the DB part now holds only the 2,335 extra items instead of 6,360. Still to verify by hand: live add/delete updates (save and delete a harmless item), and a background refresh after 20 minutes.
 - **Never lose good data to a bad refresh:** a refresh with errors that returns less than half of what is cached is rejected and the cached part is kept (`IndexParts.LooksLikeAFailedRefresh`). If memberships come back empty but groups were cached, the cached groups are kept.
@@ -327,7 +327,6 @@ All actions use the verified engine paths in 3.7. **Copy link** copies `resrec:/
 **What the logs show** (engine logs in `Resonite\Logs`, compared across launches before and after the mod was first installed on 2026-11-09 21:28 local):
 - `GET api.resonite.com/sessions?includeEmptyHeadless=true` times out repeatedly (30 s each, retried for minutes) and some `resdb:///` assets fail to gather (each tried 3 times). **Both also happen in pre-mod launches** (e.g. Nov 8: 6 timeouts and 7,108 failed gathers; Nov 9 21:00: 3 timeouts), at rates similar to launches with the mod (failed asset gathers 33–134 per launch either way; 3 session timeouts pre-mod vs 0–7 with it). In the investigated launch the first sessions request had already been waiting 18 s before the mod sent its first request, and the mod's own folder listings succeeded in the same window, so that endpoint was slow on its own.
 - Only 1 of 18 failed assets in the latest launch matches a thumbnail in the index; 17 match nothing the mod knows. So the Search tab's thumbnails are not the main source.
-- The dead RedX backend (`redx.cloudns.org`) still gets 2–4 failed requests per launch from the RedX tab. Small, but it is a source of slow-failing gathers; disabling/removing the RedX screen would remove it.
 - **Conclusion: the slowness is probably not caused by the mod, and is at least partly server/network side. Not proven either way.**
 
 **A real inefficiency found and removed anyway.** `RecordDirectory.EnsureFullyLoaded()` makes the engine write every record it loads into its local LiteDB (a lookup by `OwnerId`/`RecordId` — the two separate indexes mean a scan of that owner's records — plus an update). The old walker did that for ~520 folders (~4,500 records) at every start, all through LiteDB's single worker queue, which the engine's own asset lookups also use. Hypothesis: that can stall asset lookups while FPS stays fine. 0.4.2 therefore: (1) lists folders with `CloudWalker` (direct `Cloud.Records.GetRecords`, read-only, nothing written to the engine's database; `UseEngineWalker` setting restores the old behavior for comparison); (2) when the index was restored from the disk cache, **waits 60 s** (`StartupRefreshDelaySeconds`) before touching the network/database, since search already works from the cache; (3) lowers default concurrency 4 → 3; (4) adds **`LocalDbProbe`**: times a trivial LocalDB query every 2 s for the first 4 minutes and logs any wait ≥ 300 ms plus a summary, so a clogged queue shows up in the log with the mod's phases beside it.

@@ -1,11 +1,11 @@
 using System.Text;
-using InventorySearch.Core;
+using StashLight.Core;
 
-namespace InventorySearch;
+namespace StashLight;
 
 /// <summary>
 /// Static, string-in/string-out surface for diagnostics (callable from McpLink's call_method via
-/// typeName "InventorySearch.Api"). M1 has no UI; this is how results are inspected.
+/// typeName "StashLight.Api"). M1 has no UI; this is how results are inspected.
 /// </summary>
 public static class Api
 {
@@ -36,9 +36,9 @@ public static class Api
     {
         var seeds = CrawlPlanner.SeedsFrom(IndexService.Index.Entries).OrderBy(s => s.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
         var state = IndexService.Parts.CrawlState();
-        var off = CrawlPlanner.ParseDisabled(InventorySearchMod.Get(InventorySearchMod.DisabledLinksKey, ""));
+        var off = CrawlPlanner.ParseDisabled(StashLightMod.Get(StashLightMod.DisabledLinksKey, ""));
         var sb = new StringBuilder();
-        sb.AppendLine(LinkRows.Summary(seeds, state, off, InventorySearchMod.IncludeLinked, LinkCrawler.Active));
+        sb.AppendLine(LinkRows.Summary(seeds, state, off, StashLightMod.IncludeLinked, LinkCrawler.Active));
         foreach (var s in seeds)
         {
             state.TryGetValue(s.Key, out var info);

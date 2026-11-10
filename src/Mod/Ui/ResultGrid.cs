@@ -1,10 +1,10 @@
 using Elements.Core;
 using FrooxEngine;
 using FrooxEngine.UIX;
-using InventorySearch.Core;
+using StashLight.Core;
 using UText = FrooxEngine.UIX.Text;
 
-namespace InventorySearch.Ui;
+namespace StashLight.Ui;
 
 /// <summary>
 /// Virtualized results view in two layouts: a thumbnail grid (5 columns) or a compact list (1 column). Only a small pool of

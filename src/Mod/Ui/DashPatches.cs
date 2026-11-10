@@ -1,7 +1,7 @@
 using FrooxEngine;
 using HarmonyLib;
 
-namespace InventorySearch.Ui;
+namespace StashLight.Ui;
 
 /// <summary>
 /// Adds our screen when the userspace dash builds its screens. Same hook points ResoniteModSettings uses

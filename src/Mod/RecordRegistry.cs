@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using FrooxEngine.Store;
 
-namespace InventorySearch;
+namespace StashLight;
 
 /// <summary>
 /// Keeps the Record objects of inventories that are NOT fetchable from LocalDB or the cloud (the Local Storage

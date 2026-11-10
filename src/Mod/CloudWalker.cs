@@ -1,10 +1,10 @@
 using System.Diagnostics;
 using FrooxEngine;
-using InventorySearch.Core;
+using StashLight.Core;
 using ResoniteModLoader;
 using Record = FrooxEngine.Store.Record;
 
-namespace InventorySearch;
+namespace StashLight;
 
 /// <summary>
 /// Lists an inventory tree straight from the cloud API, one request per folder, WITHOUT going through RecordDirectory.
@@ -41,7 +41,7 @@ internal static class CloudWalker
                 }
             }
             catch (OperationCanceledException) { throw; }
-            catch (Exception ex) { ResoniteMod.Warn($"[InventorySearch] listing '{path}' failed: {ex.Message}"); }
+            catch (Exception ex) { ResoniteMod.Warn($"[StashLight] listing '{path}' failed: {ex.Message}"); }
             finally { gate.Release(); }
 
             if (list == null) { Interlocked.Increment(ref failures); return; }

@@ -1,4 +1,4 @@
-namespace InventorySearch.Core;
+namespace StashLight.Core;
 
 /// <summary>Where an entry came from. Order matters: it is the ranking tie-break (lower is better).</summary>
 public enum Source

@@ -1,9 +1,9 @@
 using System.IO.Compression;
 using System.Text;
-using InventorySearch.Core;
+using StashLight.Core;
 using Xunit;
 
-namespace InventorySearch.Tests;
+namespace StashLight.Tests;
 
 public class LinkCrawlTests
 {

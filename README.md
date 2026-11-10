@@ -1,8 +1,8 @@
-# InventorySearch
+# StashLight
 
 > **DISCLAIMER:** I’ve written applications and small mods for personal use before, but this mod was written almost entirely by Claude Code. It’s my first time using AI tools on a coding project. I wanted to see what they can really do, and I was surprised at every step. I know AI tooling is a polarizing topic, and I respect that people feel strongly about it either way. I’m reading through all the code myself, but there’s a lot of it. Since the mod is in early testing and release, please keep that in mind, and feel free to open an issue if you spot something off.
 
-A Resonite mod that adds a **Search** tab to the dash for finding things in your inventory. It runs inside the game, searches an in-memory index, and needs no external server. It was written as a faster replacement for the RedX facet, which sent every query to a third-party server.
+A Resonite mod that adds a **Search** tab to the dash for finding things in your inventory. It runs inside the game, searches an in-memory index, and needs no external server.
 
 - Type to search; results update as you type, with thumbnails, type chips (Avatars, Worlds, Objects, …) and a details pane.
 - **Scope:** Mine, All, or one group inventory (and Local Storage, if you use that mod).
@@ -21,13 +21,13 @@ A Resonite mod that adds a **Search** tab to the dash for finding things in your
 
 Changes you make in-game (saving, deleting) update the index live. A periodic background refresh catches the rest.
 
-**Caching.** The index is saved to disk (Brotli-compressed JSON, in an `InventorySearch` folder inside Resonite's local database folder), so the next start restores it in about half a second and the cloud refresh runs later in the background.
+**Caching.** The index is saved to disk (Brotli-compressed JSON, in an `StashLight` folder inside Resonite's local database folder), so the next start restores it in about half a second and the cloud refresh runs later in the background.
 
 **Searching.** A query scans the index in memory. Names are normalised, words match by prefix, and results are ranked (exact > prefix > substring, with a small boost for your own items). Copies of the same item in a folder collapse into one row (×N) using the newest copy. Large indexes are scored on several cores, and on 100k entries a query takes roughly 5–15 ms.
 
 ## Install
 
-Requires Resonite with [MonkeyLoader / ResoniteModLoader](https://github.com/resonite-modding-group/ResoniteModLoader). Copy `InventorySearch.dll` into `<Resonite>\rml_mods` and restart the game.
+Requires Resonite with [MonkeyLoader / ResoniteModLoader](https://github.com/resonite-modding-group/ResoniteModLoader). Copy `StashLight.dll` into `<Resonite>\rml_mods` and restart the game.
 
 ## Build
 
@@ -41,8 +41,12 @@ The project references the game's own DLLs. If Resonite isn't at the default Ste
 
 ## Settings
 
-Under **Mods** in the dash (ResoniteModSettings), or `MonkeyLoader\Configs\InventorySearch.json`. They cover animations, refresh timing, the disk cache and the link-crawl limits.
+Under **Mods** in the dash (ResoniteModSettings), or `MonkeyLoader\Configs\StashLight.json`. They cover animations, refresh timing, the disk cache and the link-crawl limits.
 
 ## Docs
 
 [SPEC.md](SPEC.md) has the architecture, verified engine facts, measurements and milestones. [CLAUDE.md](CLAUDE.md) holds development notes and pitfalls.
+
+## License
+
+[MIT](LICENSE)
