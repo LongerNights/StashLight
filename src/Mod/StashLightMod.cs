@@ -4,7 +4,7 @@ using ResoniteModLoader;
 
 namespace StashLight;
 
-/// <summary>Mod entry point (ResoniteModLoader mod running under MonkeyLoader's RML compat pack).</summary>
+/// <summary>Mod entry point (a plain ResoniteModLoader mod).</summary>
 public sealed class StashLightMod : ResoniteMod
 {
     public const string VERSION = "0.6.4";

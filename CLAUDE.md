@@ -64,17 +64,17 @@ Resonite is controlled live through McpLink (`mcp__mcplink__*` tools). Read [CLA
 - The user has **explicitly allowed** closing, deploying and launching Resonite as needed for testing. Never kill it: close gracefully (`Renderite.Renderer` owns the window; `CloseMainWindow()`), wait for all of `Resonite`, `Renderite.Host`, `Renderite.Renderer` to exit.
 - **Launch in desktop mode: `Start-Process "<Resonite dir>\Resonite.exe" -ArgumentList '-Screen'`** (works while Steam is running). Do NOT use `steam://rungameid/...` or `steam://run/...`: Resonite has several launch options, so Steam waits on a chooser dialog and never starts the game. `-Screen` = `HeadOutputDevice.Screen` in `LaunchOptions.cs`.
 - One command does it all: `tools\redeploy-resonite.ps1` (adapted from the Worlds tab project): close, build with `DeployToGame`, relaunch with `-Screen`.
-- Settings live in `MonkeyLoader\Configs\StashLight.json`; the game rewrites it at shutdown, so edit it only while the game is closed, and restore it after any experiment.
+- Settings live in `<Resonite>ml_config\StashLight.json` (plain RML install); the game rewrites it at shutdown, so edit it only while the game is closed, and restore it after any experiment.
 
 ## UIX gotchas (learned the hard way)
 
 - **Never pass a delegate to `UIBuilder.Button(text, action)`** (or any API that assigns a `SyncDelegate`): it throws `Assigning method declared on non-data model type…` for plain C# classes/lambdas. Create the button without an action and use `button.LocalPressed += handler` (local-only event) — see `UiKit.TextButton`.
-- Mod UI code runs inside engine callbacks; wrap each UI section in try/catch (`SearchScreen.Guard`) so a bug is logged by name instead of aborting everything. Errors show in `MonkeyLoader/Logs/MonkeyLog_*.log` (grep `[StashLight]`).
+- Mod UI code runs inside engine callbacks; wrap each UI section in try/catch (`SearchScreen.Guard`) so a bug is logged by name instead of aborting everything. Errors show in the game log (`<Resonite>\Logs\*.log`, grep `[StashLight]`).
 - **Never use `Elements.Core.MathX.Clamp` for ints**: `MathX.Clamp(5, 0, 0)` returns **-1** (verified by probe). It caused the "empty tab doesn't change the view" bug (negative cell-pool index → `ArgumentOutOfRangeException` inside `Refresh`, after the status text had already updated). Use `Math.Clamp`/`GridMath` (Core, unit-tested with a fuzz test).
 - **`UIBuilder.Panel(...)` / `Image(...)` create a CHILD slot** under the rect you give them. If code later destroys "all children" of that rect (e.g. rebuilding a menu's rows), it deletes the background too. Put backgrounds in their own `Bg` child and skip it when clearing (`SearchScreen.RebuildScopeMenu`).
 - **Text field placeholder:** `Text.NullContent` is drawn only while `Content` is **null**; `TextField("")` starts as `""`, so set `tf.TargetString = null` and `Editor.FinishHandling = NullOnWhitespace` so an emptied field returns to null. Enums for text alignment are in `Elements.Assets` (`using Elements.Assets;`).
 - **`RecordDirectory.EnsureFullyLoaded()` is not read-only**: it makes the engine write each loaded record into LocalDB (lookup + update per record through LiteDB's single queue, shared with asset lookups). Don't use it to bulk-walk inventories; use `CloudWalker` (direct `Cloud.Records.GetRecords`). Only Local Storage (a patched disk read) still goes through `RecordDirectory`. `LocalDbProbe` logs LocalDB queue waits for the first 4 minutes.
-- Exceptions inside `world.RunSynchronously` actions don't show in the MonkeyLoader log — read the engine log via McpLink `logs` (`level: error`) when something silently fails.
+- Exceptions inside `world.RunSynchronously` actions don't show in the mod's own log lines — read the engine log via McpLink `logs` (`level: error`) when something silently fails.
 - The running game locks `rml_mods/StashLight.dll`: every code change needs close → deploy → relaunch.
 
 ## Status & next steps

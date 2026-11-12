@@ -83,7 +83,7 @@ All of these are confirmed in decompiled source unless marked *measured*.
 - `InventoryBrowser.CurrentUserspaceInventory` is a static that gives the user's dash browser.
 
 ### 3.8 Mod platform
-- Game runtime: **.NET 10** (`net10.0`). MonkeyLoader is installed with the **ResoniteModLoader compat game pack v5.0.1.2**. Every installed mod, McpLink included, is an RML mod in `rml_mods/`. The `MonkeyLoader/Mods` folder is empty.
+- Game runtime: **.NET 10** (`net10.0`). (Since 2026-11-11 the dev install is plain RML; the measurements below were taken under MonkeyLoader, which was installed with the **ResoniteModLoader compat game pack v5.0.1.2**. Every installed mod, McpLink included, is an RML mod in `rml_mods/`. The `MonkeyLoader/Mods` folder was empty.)
 - Build: `net10.0` class library. References:
   - `ResoniteModLoader.dll`, from the game pack nupkg at `lib/net10.0/`
   - `0Harmony.dll` (`rml_libs/`)

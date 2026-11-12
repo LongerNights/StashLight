@@ -27,7 +27,7 @@ Changes you make in-game (saving, deleting) update the index live. A periodic ba
 
 ## Install
 
-Requires Resonite with [MonkeyLoader / ResoniteModLoader](https://github.com/resonite-modding-group/ResoniteModLoader). Copy `StashLight.dll` into `<Resonite>\rml_mods` and restart the game.
+Requires [ResoniteModLoader](https://github.com/resonite-modding-group/ResoniteModLoader) (RML). Copy `StashLight.dll` into `<Resonite>\rml_mods` and restart the game.
 
 ## Build
 
@@ -41,7 +41,7 @@ The project references the game's own DLLs. If Resonite isn't at the default Ste
 
 ## Settings
 
-Under **Mods** in the dash (ResoniteModSettings), or `MonkeyLoader\Configs\StashLight.json`. They cover animations, refresh timing, the disk cache and the link-crawl limits.
+Under **Mods** in the dash (ResoniteModSettings), or `<Resonite>ml_config\StashLight.json`. They cover animations, refresh timing, the disk cache and the link-crawl limits.
 
 ## Docs
 
