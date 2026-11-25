@@ -7,7 +7,7 @@ namespace StashLight;
 /// <summary>Mod entry point (a plain ResoniteModLoader mod).</summary>
 public sealed class StashLightMod : ResoniteMod
 {
-    public const string VERSION = "0.6.4";
+    public const string VERSION = "0.6.5";
 
     public override string Name => "StashLight";
     public override string Author => "Winter";
@@ -126,13 +126,13 @@ public sealed class StashLightMod : ResoniteMod
     {
         Cfg = GetConfiguration();
         Msg($"StashLight {VERSION} loaded");
-        // Patch each class on its own: if one fails (say an engine method changed), the others still apply.
+        // Patch features separately: if one fails (say an engine method changed), the others still apply.
         var harmony = new Harmony("Winter.StashLight");
-        foreach (var (type, what) in new[] { (typeof(Ui.DashPatches), "dash screen"), (typeof(ChangeHooks), "live index updates") })
-        {
-            try { harmony.CreateClassProcessor(type).Patch(); Msg($"patched: {what}"); }
-            catch (Exception ex) { Error($"failed to patch ({what}); that feature is off: {ex}"); }
-        }
+        try { harmony.CreateClassProcessor(typeof(Ui.DashPatches)).Patch(); Msg("patched: dash screen"); }
+        catch (Exception ex) { Error($"failed to patch (dash screen); that feature is off: {ex}"); }
+        // ChangeHooks patches (and logs) each hook on its own
+        var failed = ChangeHooks.Apply(harmony);
+        Msg(failed.Count == 0 ? "patched: live index updates" : $"patched: live index updates, except {string.Join(", ", failed)}");
         Msg($"settings read: IncludeLinked={IncludeLinked}, ListView={Get(ListViewKey, false)}, LinkMaxDepth={Get(LinkMaxDepthKey, 5)}, "
             + $"StartupRefreshDelaySeconds={Get(StartupRefreshDelaySecondsKey, 60)}, UseEngineWalker={Get(UseEngineWalkerKey, false)}, "
             + $"DisabledLinks='{Get(DisabledLinksKey, "")}'");
